@@ -3,15 +3,27 @@ import { LiteralKind } from "../built-ins/kind";
 import { AnyCommand, Command } from "../command/command";
 import { CommandContext } from "../command/context";
 import { CommandExecutor } from "../command/executor";
+import { Permissions } from "../command/permissions";
 import { CommandSyntaxError, ExecutionError, RegistryWarnings } from "../messages";
 import { TokenStream } from "../token";
 
 export class CommandRegistry {
 	protected readonly commands: Map<string, AnyCommand> = new Map();
+	/** @hidden */ public readonly level: Map<number, number> = new Map(); // Map of UserIDs. That is why this isnt an array.
 	protected constructor(
-		public readonly guid: string,
-		public readonly doesWarn: boolean = RunService.IsStudio(),
+		/** @hidden */ public readonly id: string, // Unique identifier for each registry, used for logging.
+		/** @hidden */ public readonly topLevel: number, // Level at which the game executes commands.
+		/** @hidden */ public readonly doesWarn: boolean = RunService.IsStudio(), // Shows warnings in the console for depricated or strange behavior.
 	) {}
+
+	public setExecutionLevel(player: Player, level: number) {
+		this.level.set(player.UserId, level);
+		return this;
+	}
+
+	public getExecutionLevel(player: Player) {
+		return this.level.get(player.UserId) ?? 0;
+	}
 
 	public register<N extends string, C extends Command<N, [N]> = Command<N, [N]>>(name: N, builder: (cmd: C) => C) {
 		if (this.commands.has(name) && this.doesWarn) warn(RegistryWarnings.OVERWRITTEN.format(name));
@@ -40,7 +52,9 @@ export class CommandRegistry {
 			for (const subCommand of currentCommand.children.array()) {
 				const argument = subCommand.cmd.argument.transform(tokenized.get());
 				const isValid = subCommand.cmd.argument.verify(argument);
-				if (isValid && argument) {
+				// if (isValid && argument) will compile to check for truthiness :/ we dont want that
+				// isValid may be false OR undefined, and argument could be a falsy value!
+				if (isValid !== false && isValid !== undefined && argument !== undefined) {
 					// Warn the user about argument priority.
 					// This may be intended behavior from the end user, so I do not want to throw an error here.
 					// This is a bad practice however, so we should warn the user to not do this.
@@ -67,7 +81,7 @@ export class CommandRegistry {
 			return undefined;
 		};
 
-		// eslint-disable-next-line no-constant-condition
+		// Scale down the command tree with our parsed tokens.
 		while (tokenized.inRange()) {
 			tokenized.next();
 			if (!tokenized.inRange()) break;
@@ -82,17 +96,30 @@ export class CommandRegistry {
 			currentCommand as never,
 			currentCommand.name,
 			commandString,
-			new CommandExecutor(executor),
+			new CommandExecutor(executor, currentCommand, this),
+			this,
 		);
+
+		const permissionsBuiler = currentCommand.findTopLevelPermissionsBuilder();
+		if (permissionsBuiler !== undefined) {
+			const permissions = permissionsBuiler(new Permissions(currentCommand, ctx.executor));
+			if (!permissions.canExecute()) {
+				return error(permissions._msg, 0);
+			}
+		}
 
 		const [done, result] = pcall(() => currentCommand.getImplementation()?.(ctx, ...argumentsToCommand));
 
 		if (!done) error(`Command execution error: ${result}`, 0);
-		result !== undefined && print(result); // TOOD: FIX
+
 		return result;
 	}
 
-	public static create() {
-		return new CommandRegistry(HttpService.GenerateGUID());
+	public async executeAsync(commandString: string, executor: Player | undefined) {
+		return this.execute(commandString, executor);
+	}
+
+	public static create(topLevel: number) {
+		return new CommandRegistry(HttpService.GenerateGUID(), topLevel, undefined);
 	}
 }

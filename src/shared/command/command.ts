@@ -3,6 +3,7 @@ import { LiteralKind } from "../built-ins/kind";
 import { CommandSerializable } from "../data";
 import { Kind } from "../kind";
 import { CommandContext } from "./context";
+import { Permissions } from "./permissions";
 
 export type CommandExecution<A extends defined, T extends [...defined[]] = [A]> =
 	| ((ctx: CommandContext<A, T>, ...args: T) => string | undefined | void)
@@ -17,12 +18,17 @@ interface Node {
 
 export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A]> {
 	protected _executor: CommandExecution<A, T> | undefined;
+	/** @hidden */ public permissionBuilder: (p: Permissions) => Permissions = (p) => p;
+	/** @hidden */ public readonly parent: AnyCommand | undefined;
 	/** @hidden */ public readonly children: linked_list<Node> = new linked_list();
 
 	/** @hidden */ public constructor(
 		/** @hidden */ public readonly name: string,
 		/** @hidden */ public readonly argument: Kind<A>,
-	) {}
+		parent: AnyCommand | undefined = undefined,
+	) {
+		this.parent = parent;
+	}
 
 	/** @hidden */ public getImplementation() {
 		return this._executor;
@@ -36,6 +42,22 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A]> 
 	}
 
 	/**
+	 * Finds the top level permissions builder for this command, searching through all parent commands until a valid one is found.
+	 * @hidden
+	 */
+	public findTopLevelPermissionsBuilder(): ((p: Permissions) => Permissions) | undefined {
+		let permB: ((p: Permissions) => Permissions) | undefined = this.permissionBuilder;
+		let topLevel: AnyCommand | undefined = this.parent;
+		while (topLevel) {
+			if (topLevel === undefined) break;
+			if (permB !== undefined) break;
+			if (topLevel?.permissionBuilder !== undefined) permB = topLevel?.permissionBuilder;
+			topLevel = topLevel?.parent;
+		}
+		return permB;
+	}
+
+	/**
 	 * TODO implement
 	 * @hidden
 	 * */
@@ -45,8 +67,8 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A]> 
 }
 
 export class Command<A extends defined, T extends [...defined[]] = [A]> extends ReadOnlyCommand<A, T> {
-	public constructor(name: string, argument: Kind<A>) {
-		super(name, argument);
+	public constructor(name: string, argument: Kind<A>, parent: AnyCommand | undefined = undefined) {
+		super(name, argument, parent);
 	}
 
 	/**
@@ -78,11 +100,16 @@ export class Command<A extends defined, T extends [...defined[]] = [A]> extends 
 	 * @param builder The command implementation
 	 * @returns This command
 	 */
-	appendLiteral<A2 extends string>(
+	public appendLiteral<A2 extends string>(
 		name: A2,
 		builder: (cmd: Command<A2, [...T, A2]>) => ReadOnlyCommand<A2, [...T, A2]>,
 	): Command<A, T> {
 		this.appendArgument(new LiteralKind(name), builder);
+		return this;
+	}
+
+	public permissions(builder: (p: Permissions) => Permissions) {
+		this.permissionBuilder = builder;
 		return this;
 	}
 
@@ -101,6 +128,7 @@ export class Command<A extends defined, T extends [...defined[]] = [A]> extends 
 		delete this._executor;
 		return this;
 	}
+
 	// TODO implement
 	public static deserialize(serialized: CommandSerializable) {
 		// return new Command();

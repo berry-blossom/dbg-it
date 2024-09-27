@@ -1,6 +1,7 @@
 export enum ExecutionError {
 	NOCMD = 'Command "%s" not found',
 	UNIMPL = 'No implementation for "%s", did you specify enough arguments?',
+	BADPERM = "You do not have permission to execute that command.",
 }
 
 export enum CommandSyntaxError {
