@@ -2,24 +2,33 @@ import { t } from "@rbxts/t";
 import { Kind, tKind } from "../kind";
 
 export class StringKind extends tKind<string> {
+	public constructor() {
+		super("string", t.string);
+	}
 	public transform(data: string): string {
 		return tostring(data);
 	}
-	public constructor() {
-		super("string", t.string);
+	public suggestions(): string[] {
+		return [];
 	}
 }
 
 export class NumberKind extends tKind<number> {
+	public constructor() {
+		super("number", t.number);
+	}
 	public transform(data: string) {
 		return tonumber(data);
 	}
-	public constructor() {
-		super("number", t.number);
+	public suggestions(): string[] {
+		return [];
 	}
 }
 
 export class BooleanKind extends tKind<boolean> {
+	public constructor() {
+		super("boolean", t.boolean);
+	}
 	public transform(data: string) {
 		let retrn: boolean | undefined = undefined;
 		switch (data) {
@@ -38,8 +47,8 @@ export class BooleanKind extends tKind<boolean> {
 		}
 		return retrn;
 	}
-	public constructor() {
-		super("boolean", t.boolean);
+	public suggestions(): string[] {
+		return ["1", "on", "true", "0", "off", "false"];
 	}
 }
 
@@ -50,6 +59,9 @@ export class LiteralKind<T extends string> extends tKind<T> {
 	public transform(data: string): T | undefined {
 		if (this.check(data)) return data;
 		return undefined;
+	}
+	public suggestions(): string[] {
+		return [this.literal];
 	}
 }
 
@@ -64,5 +76,8 @@ export class LiteralUnionKind<T extends string[]> extends Kind<T[number]> {
 	}
 	public verify(data: unknown): data is T[number] {
 		return this.literal.indexOf(tostring(data)) >= 0;
+	}
+	public suggestions(): string[] {
+		return [...this.literal];
 	}
 }

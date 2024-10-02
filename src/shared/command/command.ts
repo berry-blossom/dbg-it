@@ -42,6 +42,22 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A]> 
 	}
 
 	/**
+	 * Returns an array of suggestions to satisfy the argument of this command.
+	 * If the argument's suggestion array is empty, it is assumed that there are no suggestions for the command and the input is returned instead.
+	 * Assume an array where the size is 1 and the first member is the input string means a valid suggestion is completed.
+	 * @hidden
+	 */
+	public getSuggestions(input: string): string[] {
+		// TODO reduce elements based on input string
+		let suggestions = [...this.argument.suggestions()];
+		// If a type does not have suggestions, assume it should not have any.
+		const isValid = suggestions.isEmpty();
+		// TODO determine validity by fuzzy find on input string and suggestions
+		if (isValid && suggestions.isEmpty()) suggestions = [input];
+		return suggestions;
+	}
+
+	/**
 	 * Finds the top level permissions builder for this command, searching through all parent commands until a valid one is found.
 	 * @hidden
 	 */
@@ -108,6 +124,12 @@ export class Command<A extends defined, T extends [...defined[]] = [A]> extends 
 		return this;
 	}
 
+	/**
+	 * Specify the permissions for this command. Permissions are evaluated from the first ancestor of this command, then the children.
+	 *
+	 * @param builder Permissions builder
+	 * @returns This command
+	 */
 	public permissions(builder: (p: Permissions) => Permissions) {
 		this.permissionBuilder = builder;
 		return this;
