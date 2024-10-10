@@ -12,6 +12,9 @@ export class CommandContext<A extends defined, T extends [...defined[]] = define
 		public readonly registry: CommandRegistry,
 	) {}
 
+	/**
+	 * @returns A token stream of the command string used to execute this command.
+	 */
 	public tokens() {
 		return TokenStream.create(this.commandString);
 	}

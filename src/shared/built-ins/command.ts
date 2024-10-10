@@ -1,3 +1,5 @@
-import { CommandRegistry } from "../dbg-it/command-registry";
+import { Command } from "../command/command";
 
-export function helpCommand(registry: CommandRegistry) {}
+export function helpCommand<T extends Command<"help", ["help"]>>(): (cmd: T) => T {
+	return (cmd) => cmd;
+}

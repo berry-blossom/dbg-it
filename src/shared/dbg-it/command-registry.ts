@@ -16,22 +16,55 @@ export class CommandRegistry {
 		/** @hidden */ public readonly doesWarn: boolean = RunService.IsStudio(), // Shows warnings in the console for depricated or strange behavior.
 	) {}
 
-	public setExecutionLevel(player: Player, level: number) {
-		this.level.set(player.UserId, level);
+	/**
+	 * @param player The player to get the execution level for. Can be the ID of the player instead.
+	 * @param level The execution level to grant. Passing undefined will treat the player as if they have no permissions.
+	 * @returns This command registry.
+	 */
+	public setExecutionLevelFor(player: Player | number, level: number | undefined) {
+		const id: number = typeIs(player, "number") ? player : player.UserId;
+		if (level !== undefined) {
+			this.level.set(id, level);
+		} else {
+			this.level.delete(id);
+		}
 		return this;
 	}
 
-	public getExecutionLevel(player: Player) {
-		return this.level.get(player.UserId) ?? 0;
+	/**
+	 * Meant to get the execution level of a player. To get the top execution level, use the `getTopLevel()`.
+	 * @param player The player to get the execution level for. Can be the ID of the player instead.
+	 * @returns The execution level for a player
+	 */
+	public getExecutionLevelFor(player: Player | number) {
+		const id: number = typeIs(player, "number") ? player : player.UserId;
+		return this.level.get(id) ?? 0;
 	}
 
+	// Returns the execution level used wen no executor is provided to `execute`.
+	public getTopLevel(): number {
+		return this.topLevel;
+	}
+
+	/**
+	 * Registers a new command under this registry.
+	 * @param name
+	 * @param builder
+	 * @returns This registry, to register more commands.
+	 */
 	public register<N extends string, C extends Command<N, [N]> = Command<N, [N]>>(name: N, builder: (cmd: C) => C) {
 		if (this.commands.has(name) && this.doesWarn) warn(RegistryWarnings.OVERWRITTEN.format(name));
 		this.commands.set(name, builder(new Command(name, new LiteralKind(name)) as C) as AnyCommand);
 		return this;
 	}
 
-	public execute(commandString: string, executor: Player | undefined) {
+	/**
+	 * Executes a command string. Important: this is syncronous! The current thread will halt until the command finishes executing.
+	 * @param commandString Command string to execute
+	 * @param executor The executor of the command. Passing undefined will run the command with the highest level permission.
+	 * @returns A string if one was returned from the command implementation.
+	 */
+	public execute(commandString: string, executor: Player | undefined): string | void | undefined {
 		const tokenized = TokenStream.create(commandString);
 		const command = tokenized.getPosition(0) ?? "";
 		if (!this.commands.has(command)) error(ExecutionError.NOCMD.format(command), 0);
@@ -115,6 +148,7 @@ export class CommandRegistry {
 		return result;
 	}
 
+	// Same as `execute`, but runs in a Promise.
 	public async executeAsync(commandString: string, executor: Player | undefined) {
 		return this.execute(commandString, executor);
 	}

@@ -18,6 +18,9 @@ function isQuoteCharacter(character: string) {
 	return quote !== undefined || squote !== undefined;
 }
 
+/**
+ * @returns An array of strings which represent each token of the input string
+ */
 export function tokenize(str: string): string[] {
 	// This approach I'm taking here completely different than the usual way you'd do things and I'd like to give my reasoning as to why.
 	//
@@ -39,13 +42,17 @@ export function tokenize(str: string): string[] {
 	let currentString = "";
 	let state = "WRITE" as TOKENIZE_STATE;
 	let escapeState = false;
-	let lastGraphemeStart = 0;
-	let lastGraphemeEnd = 0;
 
-	const lastGrapheme = (): string | undefined => {
-		const grapheme = str.sub(lastGraphemeStart, lastGraphemeEnd);
-		return grapheme === "" ? undefined : grapheme;
-	};
+	// Unsure if we need to be able to check the last grapheme or not.
+	// I will leave functionality commented out for the future ^^
+
+	// let lastGraphemeStart = 0;
+	// let lastGraphemeEnd = 0;
+
+	// const lastGrapheme = (): string | undefined => {
+	// 	const grapheme = str.sub(lastGraphemeStart, lastGraphemeEnd);
+	// 	return grapheme === "" ? undefined : grapheme;
+	// };
 
 	const flushToken = () => {
 		if (currentString !== "") result.push(currentString);
@@ -56,8 +63,8 @@ export function tokenize(str: string): string[] {
 	for (const [graphemeStart, graphemeEnd] of utf8.graphemes(str)) {
 		const prepareNextGrapheme = (grapheme: string | undefined = undefined) => {
 			if (grapheme !== undefined) currentString += grapheme;
-			lastGraphemeStart = graphemeStart;
-			lastGraphemeEnd = graphemeEnd;
+			// lastGraphemeStart = graphemeStart;
+			// lastGraphemeEnd = graphemeEnd;
 		};
 
 		// Reached a new line or space, flush the current token and continue
@@ -134,6 +141,7 @@ export class ReadOnlyTokenStream {
 	}
 
 	public inRange() {
+		// Subtract one to handle roblox-ts 0 index stuff
 		return this.cursor <= this.size() - 1;
 	}
 

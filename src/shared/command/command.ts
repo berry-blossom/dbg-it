@@ -34,7 +34,11 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A]> 
 		return this._executor;
 	}
 
-	/** @hidden */ public getExpectedArguments() {
+	/**
+	 * @hidden
+	 * @returns Names of the expected arguments of all direct children under this command.
+	 */
+	public getExpectedArguments() {
 		return `(${this.children
 			.array()
 			.mapFiltered((n) => n.cmd.argument.label)
@@ -42,10 +46,10 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A]> 
 	}
 
 	/**
-	 * Returns an array of suggestions to satisfy the argument of this command.
+	 * @hidden
+	 * @returns An array of suggestions to satisfy the argument of this command.
 	 * If the argument's suggestion array is empty, it is assumed that there are no suggestions for the command and the input is returned instead.
 	 * Assume an array where the size is 1 and the first member is the input string means a valid suggestion is completed.
-	 * @hidden
 	 */
 	public getSuggestions(input: string): string[] {
 		// TODO reduce elements based on input string
@@ -54,6 +58,16 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A]> 
 		const isValid = suggestions.isEmpty();
 		// TODO determine validity by fuzzy find on input string and suggestions
 		if (isValid && suggestions.isEmpty()) suggestions = [input];
+		return suggestions;
+	}
+
+	/**
+	 * TODO implement
+	 * @hidden
+	 * @returns
+	 */
+	public getChildSuggestions(input: string): string[] {
+		const suggestions: string[] = [];
 		return suggestions;
 	}
 
