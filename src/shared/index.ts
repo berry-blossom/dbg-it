@@ -1,7 +1,5 @@
-export * from "./class/dbgItBase";
-export * from "./class/logging";
-export * from "./class/type";
-export * from "./datagen";
-export * from "./builtinTypes";
-export * from "./enum";
-export { BaseRegistry } from "./class/registry";
+export * from "./built-ins/command";
+export * from "./built-ins/kind";
+export * from "./command/command";
+export * from "./dbg-it/command-registry";
+export * from "./kind";
