@@ -8,7 +8,7 @@ import { CommandSyntaxError, ExecutionError, RegistryWarnings } from "../message
 import { TokenStream } from "../token";
 
 export class CommandRegistry {
-	protected readonly commands: Map<string, AnyCommand> = new Map();
+	/** @hidden */ public readonly commands: Map<string, AnyCommand> = new Map();
 	/** @hidden */ public readonly level: Map<number, number> = new Map(); // Map of UserIDs. That is why this isnt an array.
 	protected constructor(
 		/** @hidden */ public readonly id: string, // Unique identifier for each registry, used for logging.

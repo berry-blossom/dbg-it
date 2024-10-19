@@ -3,7 +3,7 @@ import { Kind, tKind } from "../kind";
 
 export class StringKind extends tKind<string> {
 	public constructor() {
-		super("string", t.string);
+		super("[string]", t.string);
 	}
 	public transform(data: string): string {
 		return tostring(data);
@@ -15,7 +15,7 @@ export class StringKind extends tKind<string> {
 
 export class NumberKind extends tKind<number> {
 	public constructor() {
-		super("number", t.number);
+		super("[number]", t.number);
 	}
 	public transform(data: string) {
 		return tonumber(data);
@@ -25,9 +25,21 @@ export class NumberKind extends tKind<number> {
 	}
 }
 
+export class IntegerKind extends tKind<number> {
+	public constructor() {
+		super("[int]", t.integer);
+	}
+	public transform(data: string) {
+		return tonumber(data)?.idiv(1);
+	}
+	public suggestions(): string[] {
+		return [];
+	}
+}
+
 export class BooleanKind extends tKind<boolean> {
 	public constructor() {
-		super("boolean", t.boolean);
+		super("[boolean]", t.boolean);
 	}
 	public transform(data: string) {
 		let retrn: boolean | undefined = undefined;
@@ -54,7 +66,7 @@ export class BooleanKind extends tKind<boolean> {
 
 export class LiteralKind<T extends string> extends tKind<T> {
 	public constructor(public readonly literal: T) {
-		super(`"${literal}"`, t.literal(literal));
+		super(`${literal}`, t.literal(literal));
 	}
 	public transform(data: string): T | undefined {
 		if (this.check(data)) return data;
@@ -68,7 +80,7 @@ export class LiteralKind<T extends string> extends tKind<T> {
 export class LiteralUnionKind<T extends string[]> extends Kind<T[number]> {
 	public readonly literal: T;
 	public constructor(...literal: T) {
-		super(`[${literal.mapFiltered((v) => `"${v}"`).join(" | ")}]`);
+		super(`[${literal.join(" | ")}]`);
 		this.literal = literal;
 	}
 	public transform(data: string): T[number] | undefined {

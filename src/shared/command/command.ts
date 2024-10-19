@@ -19,6 +19,7 @@ interface Node {
 export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A]> {
 	protected _executor: CommandExecution<A, T> | undefined;
 	/** @hidden */ public permissionBuilder: (p: Permissions) => Permissions = (p) => p;
+	/** @hidden */ public description: string | undefined;
 	/** @hidden */ public readonly parent: AnyCommand | undefined;
 	/** @hidden */ public readonly children: linked_list<Node> = new linked_list();
 
@@ -112,7 +113,7 @@ export class Command<A extends defined, T extends [...defined[]] = [A]> extends 
 		kind: Kind<A2>,
 		builder: (cmd: Command<A2, [...T, A2]>) => ReadOnlyCommand<A2, [...T, A2]>,
 	): Command<A, T> {
-		const subCommand = builder(new Command(`${this.name}/${kind.label}`, kind));
+		const subCommand = builder(new Command(`${kind.label}`, kind));
 		this.children.add({
 			cmd: subCommand as AnyCommand,
 			parent: this as AnyCommand,
