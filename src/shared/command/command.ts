@@ -11,7 +11,7 @@ export type CommandExecution<A extends defined, T extends [...defined[]] = [A]> 
 
 export type AnyCommand = ReadOnlyCommand<defined, [...defined[]]>;
 
-interface Node {
+export interface CommandChildrenNode {
 	cmd: AnyCommand;
 	parent: AnyCommand;
 }
@@ -21,7 +21,7 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A]> 
 	/** @hidden */ public permissionBuilder: (p: Permissions) => Permissions = (p) => p;
 	/** @hidden */ public description: string | undefined;
 	/** @hidden */ public readonly parent: AnyCommand | undefined;
-	/** @hidden */ public readonly children: linked_list<Node> = new linked_list();
+	/** @hidden */ public readonly children: linked_list<CommandChildrenNode> = new linked_list();
 
 	/** @hidden */ public constructor(
 		/** @hidden */ public readonly name: string,

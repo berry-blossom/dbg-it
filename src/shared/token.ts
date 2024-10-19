@@ -141,8 +141,37 @@ export class ReadOnlyTokenStream {
 	}
 
 	public inRange() {
+		print(this.cursor, this.size() - 1);
 		// Subtract one to handle roblox-ts 0 index stuff
-		return this.cursor <= this.size() - 1;
+		return this.cursor <= this.size() - 1 && this.cursor >= 0;
+	}
+
+	public getAfter() {
+		if (!this.inRange()) return "";
+		const currentCursor = this.cursor;
+		let str = "";
+		while (this.inRange()) {
+			str += this.get() ?? "";
+			if (this.cursor + 1 <= this.size() - 1) str += " ";
+			this.next();
+			if (!this.inRange()) break;
+		}
+		this.cursor = currentCursor;
+		return str;
+	}
+
+	public getBefore() {
+		if (!this.inRange()) return "";
+		const currentCursor = this.cursor;
+		let str = "";
+		while (this.inRange()) {
+			str += this.get() ?? "";
+			if (this.cursor - 1 >= 0) str += " ";
+			this.previous();
+			if (!this.inRange()) break;
+		}
+		this.cursor = currentCursor;
+		return str;
 	}
 
 	public static create(str: string) {

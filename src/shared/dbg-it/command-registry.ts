@@ -77,13 +77,22 @@ export class CommandRegistry {
 			let foundCommand: AnyCommand | undefined = undefined;
 			let foundArgument: unknown = undefined;
 			let didWarnArgPriority = false;
-			// Check if there are any commands left to process
 
 			// Command string too long!
 			if (!currentCommand.children.head) return CommandSyntaxError.TOOLONG;
 
-			for (const subCommand of currentCommand.children.array()) {
-				const argument = subCommand.cmd.argument.transform(tokenized.get());
+			currentCommand.children.array().forEach((subCommand) => {
+				let tokenString = tokenized.get();
+				// Overflow the token if it is the last valid one for an argument.
+				if (
+					subCommand.cmd.children.array().size() <= 0 &&
+					// If the parent's commands have any further children, do not overflow the current argument
+					subCommand.parent.children
+						.array()
+						.reduce((accum, current) => math.max(current.cmd.children.array().size(), accum), 0) <= 0
+				)
+					tokenString = tokenized.getAfter();
+				const argument = subCommand.cmd.argument.transform(tokenString);
 				const isValid = subCommand.cmd.argument.verify(argument);
 				// if (isValid && argument) will compile to check for truthiness :/ we dont want that
 				// isValid may be false OR undefined, and argument could be a falsy value!
@@ -96,30 +105,31 @@ export class CommandRegistry {
 						this.doesWarn &&
 						!didWarnArgPriority
 					) {
-						warn(RegistryWarnings.ARGPRIORITY.format(commandString, tokenized.get()));
+						warn(RegistryWarnings.ARGPRIORITY.format(commandString, tokenString));
 						didWarnArgPriority = true;
 					}
 					foundCommand = subCommand.cmd;
 					foundArgument = argument;
 				}
-			}
+			});
 
-			// Invalid argument!
 			if (foundCommand === undefined || foundArgument === undefined)
 				return CommandSyntaxError.BADARG.format(tokenized.get(), currentCommand.getExpectedArguments());
 
 			currentCommand = foundCommand;
 			argumentsToCommand.push(foundArgument!);
 
-			return undefined;
+			return currentCommand.children.array().size() <= 0 ? "" : undefined;
 		};
 
 		// Scale down the command tree with our parsed tokens.
 		while (tokenized.inRange()) {
+			if (!tokenized.inRange()) break;
 			tokenized.next();
 			if (!tokenized.inRange()) break;
 			const syntaxError = processNextCommand();
 			if (syntaxError === undefined) continue;
+			if (syntaxError === "") break;
 			error(syntaxError, 0);
 		}
 
