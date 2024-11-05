@@ -141,7 +141,6 @@ export class ReadOnlyTokenStream {
 	}
 
 	public inRange() {
-		print(this.cursor, this.size() - 1);
 		// Subtract one to handle roblox-ts 0 index stuff
 		return this.cursor <= this.size() - 1 && this.cursor >= 0;
 	}
