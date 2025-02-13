@@ -108,7 +108,10 @@ export function tokenize(str: string): string[] {
 
 export class ReadOnlyTokenStream {
 	protected cursor: number = 0;
-	protected constructor(protected readonly _tokens: string[]) {}
+	protected constructor(
+		protected readonly _tokens: string[],
+		/** @hidden /*/ public readonly _origin: string,
+	) {}
 
 	public next() {
 		this.cursor++;
@@ -174,7 +177,7 @@ export class ReadOnlyTokenStream {
 	}
 
 	public static create(str: string) {
-		return new ReadOnlyTokenStream(tokenize(str));
+		return new ReadOnlyTokenStream(tokenize(str), str);
 	}
 }
 
@@ -182,8 +185,11 @@ export class ReadOnlyTokenStream {
  * Represents a stream of tokens from a string.
  */
 export class TokenStream extends ReadOnlyTokenStream {
-	protected constructor(protected readonly _tokens: string[]) {
-		super(_tokens);
+	protected constructor(
+		protected readonly _tokens: string[],
+		original: string,
+	) {
+		super(_tokens, original);
 	}
 
 	public write(str: string) {
@@ -191,6 +197,6 @@ export class TokenStream extends ReadOnlyTokenStream {
 	}
 
 	public static create(str: string) {
-		return new TokenStream(tokenize(str));
+		return new TokenStream(tokenize(str), str);
 	}
 }

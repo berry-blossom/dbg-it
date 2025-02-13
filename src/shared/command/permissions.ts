@@ -2,13 +2,13 @@ import { ExecutionError } from "../messages";
 import { AnyCommand } from "./command";
 import { CommandExecutor } from "./executor";
 
-export class Permissions {
+export class Permissions<LL extends string[] = string[]> {
 	/** @hidden */ public _level: number = 0;
 	/** @hidden */ public _msg: string = ExecutionError.BADPERM;
 
 	public constructor(
-		protected readonly command: AnyCommand,
-		protected readonly executor: CommandExecutor,
+		protected readonly command: AnyCommand<LL>,
+		protected readonly executor: CommandExecutor<LL>,
 	) {}
 
 	/**

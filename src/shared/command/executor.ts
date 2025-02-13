@@ -3,11 +3,11 @@ import { AnyCommand } from "./command";
 
 const GAME_NAME = `@!_${game.Name}_!`;
 
-export class CommandExecutor {
+export class CommandExecutor<LL extends string[] = string[]> {
 	public constructor(
 		public readonly player: Player | undefined,
-		protected readonly command: AnyCommand,
-		public readonly registry: CommandRegistry,
+		protected readonly command: AnyCommand<LL>,
+		public readonly registry: CommandRegistry<undefined, LL>,
 	) {}
 
 	/**
