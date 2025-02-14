@@ -17,5 +17,5 @@ export enum RegistryWarnings {
 }
 
 export enum KindErrors {
-	PLAYER_KIND_MACRO_OVERRIDE = "Player '%s' exists, to run command on this player prefix with an underscore: '_%s'",
+	CSV_KIND_MACRO_COLLISION = "CSV Kind of %s has macro '%s' which collides with a value. To run command with that value, prefix it with an underscore: '_%s'.",
 }
