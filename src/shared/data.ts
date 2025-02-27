@@ -1,5 +1,8 @@
 export interface CommandSerializable {
 	name: string;
 	kind: string;
-	branches: CommandSerializable[];
+	extraData: string[];
+	children: CommandSerializable[];
+	permissionSerialized: string;
+	impl: boolean;
 }

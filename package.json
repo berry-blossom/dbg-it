@@ -37,6 +37,7 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@rbxts/berry-buffer": "github:gIaceon/berry-buffer",
     "@rbxts/berry-linked-list": "^0.1.2",
     "@rbxts/services": "^1.5.4",
     "@rbxts/t": "^3.1.1"

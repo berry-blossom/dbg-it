@@ -18,6 +18,15 @@ export class Reduceable<T extends defined> {
 		return v;
 	}
 
+	public collect(): linked_list<T> {
+		const ll = new linked_list<T>();
+		this._reducers.forEach((reducer) => {
+			const v = reducer(this._default, this._default);
+			if (v !== undefined) ll.add(v!);
+		});
+		return ll;
+	}
+
 	public destroy() {
 		this._reducers.clear();
 	}

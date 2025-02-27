@@ -7,7 +7,7 @@ export class CommandExecutor<LL extends string[] = string[]> {
 	public constructor(
 		public readonly player: Player | undefined,
 		protected readonly command: AnyCommand<LL>,
-		public readonly registry: CommandRegistry<undefined, LL>,
+		public readonly registry: CommandRegistry<unknown, LL>,
 	) {}
 
 	/**

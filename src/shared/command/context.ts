@@ -9,7 +9,7 @@ export class CommandContext<A extends defined, T extends [...defined[]] = define
 		public readonly name: string,
 		public readonly commandString: string,
 		public readonly executor: CommandExecutor<LL>,
-		public readonly registry: CommandRegistry<undefined, LL>,
+		public readonly registry: CommandRegistry<unknown, LL>,
 	) {}
 
 	/**
@@ -17,5 +17,13 @@ export class CommandContext<A extends defined, T extends [...defined[]] = define
 	 */
 	public tokens() {
 		return TokenStream.create(this.commandString);
+	}
+
+	public warn(...msg: string[]) {
+		this.registry.logs.append(this.registry.warnL, msg.join(" "));
+	}
+
+	public throw(...msg: string[]) {
+		error(msg.join(" "), 0);
 	}
 }

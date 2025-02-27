@@ -8,6 +8,7 @@ export class ReadonlyLogSink<T extends string[]> {
 	protected readonly subscriptions: linked_list<LogSubscription<T>> = new linked_list();
 	protected readonly levels: T;
 	protected readonly factory: LogFactory<T>;
+	protected prefix?: string | undefined;
 	public constructor(...levels: T) {
 		// We can't use a constructor initializer here because we need to spread to
 		// preserve string literal types
@@ -20,8 +21,12 @@ export class ReadonlyLogSink<T extends string[]> {
 }
 
 export class LogSink<T extends string[]> extends ReadonlyLogSink<T> {
-	public append(level: T[number], msg: string) {
-		this.pendingLogs.add(this.factory(level, msg));
+	public setPrefix(prefix: string) {
+		this.prefix = prefix;
+		return this;
+	}
+	public append(level: T[number], ...msg: string[]) {
+		this.pendingLogs.add(this.factory(level, msg.join(" "), this.prefix));
 	}
 	public flush(): LogStructure<T>[] {
 		const flushed: LogStructure<T>[] = [];

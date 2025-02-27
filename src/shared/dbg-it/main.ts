@@ -57,6 +57,7 @@ export class Main<T extends Partial<DbgItConfig> = typeof DefaultMainConfig> {
 
 	public loadPlayer(player: Player, executionPower: number = this._settings.defaultExecutionPower) {
 		this._registry.setExecutionLevelFor(player, executionPower);
+		return this;
 	}
 
 	public subscribeLogs(
@@ -71,7 +72,8 @@ export class Main<T extends Partial<DbgItConfig> = typeof DefaultMainConfig> {
 		level: LL[number],
 		msg: string,
 	) {
-		return this._sink.append(level, msg);
+		this._sink.append(level, msg);
+		return this;
 	}
 
 	public flushLogs() {
@@ -89,7 +91,7 @@ export class Main<T extends Partial<DbgItConfig> = typeof DefaultMainConfig> {
 		return this._registry.executeAsync(command, executor);
 	}
 
-	public init() {
+	/** @hidden */ public start() {
 		this._commandsSpecifiers.forEach((spec) => {
 			spec(this._registry);
 		});

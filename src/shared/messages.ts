@@ -2,7 +2,10 @@ export enum ExecutionError {
 	NOCMD = 'Command "%s" not found',
 	UNIMPL = 'No implementation for "%s", did you specify enough arguments?',
 	BADPERM = "You do not have permission to execute that command.",
-	UNEXP = "Unexpected error while executing command: %s",
+	UNEXP = "Error whilst executing command: %s",
+	DESER = "This command has been deserialized and cannot be executed. Please ensure command replication is properly set up.",
+	NOHOOK = "Hook %s was not specified",
+	HOOKERR = "%s errors: %s",
 }
 
 export enum CommandSyntaxError {
@@ -13,7 +16,7 @@ export enum CommandSyntaxError {
 
 export enum RegistryWarnings {
 	OVERWRITTEN = 'Command "%s" was registered more than once and will be overwritten!',
-	ARGPRIORITY = 'Command "%s" @ token "%s" had conflicting arguments! Consider using subcommands to elimate conflicts.',
+	ARGPRIORITY = 'Command "%s" @ token "%s" had conflicting valid arguments! Consider using literal subcommands to elimate conflicts.',
 }
 
 export enum KindErrors {

@@ -1,11 +1,16 @@
 import linked_list from "@rbxts/berry-linked-list";
-import { LiteralKind } from "../built-ins/kind";
+import { LiteralKind, StringKind } from "../built-ins/kind";
 import { CommandSerializable } from "../data";
 import { Kind } from "../kind";
 import { CommandContext } from "./context";
 import { Permissions } from "./permissions";
 import { ReadOnlyTokenStream } from "../token";
 import { CommandRegistry } from "../dbg-it";
+import { DBGIT_EXDATA_SYMBOL } from "./extraData";
+import { BufferBuilder } from "@rbxts/berry-buffer";
+import { CommandExecutor } from "./executor";
+import { ExecutionError } from "../messages";
+import { hookCtxFactory } from "../dbg-it/command-registry/hooks";
 
 export type CommandExecution<A extends defined, T extends [...defined[]] = [A], LL extends string[] = string[]> =
 	| ((ctx: CommandContext<A, T, LL>, ...args: T) => string | undefined | void)
@@ -24,6 +29,7 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 	/** @hidden */ public description: string | undefined;
 	/** @hidden */ public readonly parent: AnyCommand<LL> | undefined;
 	/** @hidden */ public readonly children: linked_list<CommandChildrenNode<LL>> = new linked_list();
+	/** @hidden */ public readonly extraData: ReadonlyArray<string> = [];
 
 	/** @hidden */ public constructor(
 		/** @hidden */ public readonly registry: CommandRegistry<unknown, LL>,
@@ -39,7 +45,6 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 	}
 
 	/**
-	 * @hidden
 	 * @returns Names of the expected arguments of all direct children under this command.
 	 */
 	public getExpectedArguments() {
@@ -50,7 +55,6 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 	}
 
 	/**
-	 * @hidden
 	 * @returns An array of suggestions to satisfy the argument of this command.
 	 * If the argument's suggestion array is empty, it is assumed that there are no suggestions for the command and the input is returned instead.
 	 * Assume an array where the size is 1 and the first member is the input string means a valid suggestion is completed.
@@ -62,16 +66,6 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 		const isValid = suggestions.isEmpty();
 		// TODO determine validity by fuzzy find on input string and suggestions
 		if (isValid && suggestions.isEmpty()) suggestions = [input._origin];
-		return suggestions;
-	}
-
-	/**
-	 * TODO implement
-	 * @hidden
-	 * @returns
-	 */
-	public getChildSuggestions(input: string): string[] {
-		const suggestions: string[] = [];
 		return suggestions;
 	}
 
@@ -92,11 +86,35 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 	}
 
 	/**
-	 * TODO implement
-	 * @hidden
+	 * Creates a CommandSerializable table which is used to easily serialize commands.
 	 * */
-	public serialize(): CommandSerializable {
-		return {} as never;
+	public asSerializable(): CommandSerializable {
+		const current: CommandSerializable = {
+			name: this.name,
+			kind: this.argument.label,
+			extraData: this.extraData as Array<string>,
+			children: [],
+			// This is ugly, gross, and poorly done. Can we do this another way somehow?
+			// I architeched permissions to be created at execution time, because
+			// it is much easier to handle inheriting higher level permissions that way.
+			permissionSerialized: BufferBuilder.display(
+				(this.findTopLevelPermissionsBuilder() ?? ((p) => p))(
+					new Permissions<LL>(
+						this as AnyCommand<LL>,
+						new CommandExecutor<LL>(undefined, this as AnyCommand<LL>, this.registry),
+					),
+				).serialize(),
+			),
+			impl: this.getImplementation() !== undefined,
+		};
+		this.children.forEach((child) => {
+			current.children.push(child.cmd.asSerializable());
+		});
+		return current;
+	}
+
+	public getExtraData(): ReadonlyArray<string> {
+		return this.extraData;
 	}
 }
 
@@ -134,10 +152,8 @@ export class Command<
 	}
 
 	/**
-	 * Add a literal argument to this command.
+	 * Add a literal subcommand to this command.
 	 * This is equivalent to using {@link appendArgument} with a {@link LiteralKind} argument.
-	 *
-	 * Ensure you register literal arguments after string arguments, as the string argument will conflict with literal arguments.
 	 *
 	 * @param name Name of the subcommand
 	 * @param builder The command implementation
@@ -178,8 +194,40 @@ export class Command<
 		return this;
 	}
 
-	// TODO implement
-	public static deserialize(serialized: CommandSerializable) {
-		// return new Command();
+	/**
+	 * Appends extra data in the form of a string to this command.
+	 * Extra data is preserved through serialization and deserialization.
+	 * This data should be as small as possible as to not bloat the length of the serialized command.
+	 * @param data A string which will be preserved through serdes
+	 * @returns This command
+	 */
+	public appendExtraData(data: string | DBGIT_EXDATA_SYMBOL) {
+		(this.extraData as Array<string>).push(data);
+		return this;
+	}
+
+	public static fromSerializable<LL extends string[] = string[]>(
+		serialized: CommandSerializable,
+		registry: CommandRegistry,
+		parent?: AnyCommand<LL>,
+	) {
+		const root = new Command(registry, serialized.name, new StringKind(), parent as never);
+		(root.extraData as Array<string>).push(DBGIT_EXDATA_SYMBOL.DESERIALIZED);
+		serialized.children.forEach((child) => {
+			const childDeser = Command.fromSerializable(child, registry, root as AnyCommand);
+			root.children.add({
+				cmd: childDeser as never,
+				parent: root as never,
+			});
+		});
+		if (serialized.impl)
+			root.implement((ctx) => {
+				const replHandle = ctx.registry.hooks.get("SERIALIZED_CMD");
+				if (replHandle === undefined) return ctx.throw(ExecutionError.DESER);
+				return replHandle.reduce()(
+					hookCtxFactory(ctx.command as never, ctx.executor as never, ctx.commandString),
+				);
+			});
+		return root as unknown as Command<string, string[], LL>;
 	}
 }

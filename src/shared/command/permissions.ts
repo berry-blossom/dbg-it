@@ -1,6 +1,9 @@
+import { BufferBuilder, BuilderDatatypes } from "@rbxts/berry-buffer";
 import { ExecutionError } from "../messages";
 import { AnyCommand } from "./command";
 import { CommandExecutor } from "./executor";
+
+const permissionSerializedSteps: BuilderDatatypes[] = [];
 
 export class Permissions<LL extends string[] = string[]> {
 	/** @hidden */ public _level: number = 0;
@@ -42,7 +45,10 @@ export class Permissions<LL extends string[] = string[]> {
 	}
 
 	// TODO
-	public serialize() {}
+	public serialize(): buffer {
+		const [buf, _] = BufferBuilder.create().build();
+		return buf;
+	}
 	// TODO
 	public static deseralize() {}
 }

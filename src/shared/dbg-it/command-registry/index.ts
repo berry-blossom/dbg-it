@@ -1,13 +1,19 @@
-import { HttpService, RunService } from "@rbxts/services";
-import { LiteralKind } from "../built-ins/kind";
-import { AnyCommand, Command } from "../command/command";
-import { CommandContext } from "../command/context";
-import { CommandExecutor } from "../command/executor";
-import { Permissions } from "../command/permissions";
-import { CommandSyntaxError, ExecutionError, RegistryWarnings } from "../messages";
-import { TokenStream } from "../token";
-import { LogSink } from "../log";
-import { KindCommandContext } from "../built-ins/kind/context";
+import { HttpService } from "@rbxts/services";
+import { LiteralKind } from "../../built-ins/kind";
+import { AnyCommand, Command } from "../../command/command";
+import { CommandContext } from "../../command/context";
+import { CommandExecutor } from "../../command/executor";
+import { Permissions } from "../../command/permissions";
+import { ExecutionError, RegistryWarnings } from "../../messages";
+import { TokenStream } from "../../token";
+import { LogSink } from "../../log";
+import { deserializeCommand } from "../../command";
+import { CommandSerializable } from "../../data";
+import { parseCommandArguments } from "./execution";
+import { ExecutionHooks, HookArgs, HookCtx, hookCtxFactory, runHook } from "./hooks";
+import { getEnumKeys, Reduceable } from "../../util";
+
+function empty() {}
 
 // The generic for this class represents the return type of `register`
 // This is to allow sandboxed types such as command specifiers which will attempt to hide the execution function during registration contexts.
@@ -15,12 +21,18 @@ import { KindCommandContext } from "../built-ins/kind/context";
 export class CommandRegistry<RS = undefined, LL extends string[] = string[]> {
 	/** @hidden */ public readonly commands: Map<string, AnyCommand<LL>> = new Map();
 	/** @hidden */ public readonly level: Map<number, number> = new Map();
+	/** @hidden */ public readonly hooks: Map<
+		keyof typeof ExecutionHooks,
+		Reduceable<(...args: HookArgs<LL>[keyof typeof ExecutionHooks]) => string | undefined | void>
+	> = new Map();
 	protected constructor(
 		/** @hidden */ public readonly id: string, // Unique identifier for each registry, used for logging.
 		/** @hidden */ public readonly topLevel: number, // Level at which the game executes commands.
 		/** @hidden */ public readonly warnL: LL[number], // Shows warnings in the console for depricated or strange behavior.
 		public readonly logs: LogSink<LL>,
-	) {}
+	) {
+		getEnumKeys(ExecutionHooks).forEach((v) => this.hooks.set(v, new Reduceable(() => empty) as never));
+	}
 
 	/**
 	 * @param player The player to get the execution level for. Can be the ID of the player instead.
@@ -69,6 +81,25 @@ export class CommandRegistry<RS = undefined, LL extends string[] = string[]> {
 		return this as never;
 	}
 
+	public registerSerialized(
+		buf: buffer,
+		callback: (deser: CommandSerializable) => void,
+	): RS extends defined ? RS : CommandRegistry<undefined, LL> {
+		const deserialized = deserializeCommand(buf);
+		// TODO implement abstract parenting
+		const cmd = Command.fromSerializable<LL>(deserialized, this as never, undefined);
+		this.commands.set(deserialized.name, cmd as AnyCommand<LL>);
+		callback(deserialized);
+		return this as never;
+	}
+
+	public addHook<T extends keyof typeof ExecutionHooks>(
+		hook: T,
+		fn: (...args: HookArgs<LL>[T]) => string | undefined | void,
+	): () => void {
+		return this.hooks.get(hook)?.attach(() => fn as never) ?? empty;
+	}
+
 	/**
 	 * Executes a command string. Important: this is syncronous! The current thread will halt until the command finishes executing.
 	 * @param commandString Command string to execute
@@ -81,69 +112,34 @@ export class CommandRegistry<RS = undefined, LL extends string[] = string[]> {
 		if (!this.commands.has(command)) error(ExecutionError.NOCMD.format(command), 0);
 
 		const rootCommand = this.commands.get(command)!;
-		const argumentsToCommand: defined[] = [command];
+		let argumentsToCommand: defined[] = [command];
 		let currentCommand: AnyCommand<LL> = rootCommand;
 
-		const processNextCommand = (): string | undefined => {
-			let foundCommand: AnyCommand<LL> | undefined = undefined;
-			let foundArgument: unknown = undefined;
-			let didWarnArgPriority = false;
-
-			// Command string too long!
-			if (!currentCommand.children.head) return CommandSyntaxError.TOOLONG;
-
-			const kindCtx: KindCommandContext<LL> = {
-				logger: this.logs,
-				warnLevel: this.warnL,
-				executor: executor,
-			};
-
-			currentCommand.children.array().forEach((subCommand) => {
-				let tokenString = tokenized.get();
-				// Overflow the token if it is the last valid one for an argument.
-				if (
-					subCommand.cmd.children.array().size() <= 0 &&
-					// If the parent's commands have any further children, do not overflow the current argument
-					subCommand.parent.children
-						.array()
-						.reduce((accum, current) => math.max(current.cmd.children.array().size(), accum), 0) <= 0
-				)
-					tokenString = tokenized.getAfter();
-				const argument = subCommand.cmd.argument.transform(tokenString, kindCtx);
-				const isValid = subCommand.cmd.argument.verify(argument, kindCtx);
-				// if (isValid && argument) will compile to check for truthiness :/ we dont want that
-				// isValid may be false OR undefined, and argument could be a falsy value!
-				if (isValid !== false && isValid !== undefined && argument !== undefined) {
-					// Warn the user about argument priority.
-					// This may be intended behavior from the end user, so I do not want to throw an error here.
-					// This is a bad practice however, so we should warn the user to not do this.
-					if ((foundCommand !== undefined || foundArgument !== undefined) && !didWarnArgPriority) {
-						this.logs.append(this.warnL, RegistryWarnings.ARGPRIORITY.format(commandString, tokenString));
-						didWarnArgPriority = true;
-					}
-					foundCommand = subCommand.cmd;
-					foundArgument = argument;
-				}
-			});
-
-			if (foundCommand === undefined || foundArgument === undefined)
-				return CommandSyntaxError.BADARG.format(tokenized.get(), currentCommand.getExpectedArguments());
-
-			currentCommand = foundCommand;
-			argumentsToCommand.push(foundArgument!);
-
-			return currentCommand.children.array().size() <= 0 ? "" : undefined;
-		};
+		let hookErr = runHook<"BEFORE_VALIDATE", LL>(
+			this,
+			"BEFORE_VALIDATE",
+			// for some reason the type checker is struggling here
+			// going to just cast to never for now
+			hookCtxFactory<LL>(currentCommand, executor, commandString) as never,
+		);
+		if (hookErr !== undefined) error(hookErr, 0);
+		hookErr = undefined;
 
 		// Scale down the command tree with our parsed tokens.
 		while (tokenized.inRange()) {
 			if (!tokenized.inRange()) break;
 			tokenized.next();
 			if (!tokenized.inRange()) break;
-			const syntaxError = processNextCommand();
-			if (syntaxError === undefined) continue;
-			if (syntaxError === "") break;
-			error(syntaxError, 0);
+			const {
+				err,
+				args,
+				command: foundCommand,
+			} = parseCommandArguments(this, executor, currentCommand, tokenized, commandString);
+			argumentsToCommand = [...argumentsToCommand, ...args];
+			currentCommand = foundCommand;
+			if (err === undefined) continue;
+			if (err === "") break;
+			error(err, 0);
 		}
 
 		if (currentCommand.getImplementation() === undefined) error(ExecutionError.UNIMPL.format(commandString), 0);
@@ -156,13 +152,36 @@ export class CommandRegistry<RS = undefined, LL extends string[] = string[]> {
 			this as CommandRegistry<undefined, LL>,
 		);
 
+		let permissions: Permissions<LL> | undefined;
 		const permissionsBuiler = currentCommand.findTopLevelPermissionsBuilder();
 		if (permissionsBuiler !== undefined) {
-			const permissions = permissionsBuiler(new Permissions<LL>(currentCommand, ctx.executor) as never);
+			permissions = permissionsBuiler(new Permissions<LL>(currentCommand, ctx.executor) as never);
 			if (!permissions.canExecute()) return error(permissions._msg, 0);
 		}
 
+		hookErr = runHook<"BEFORE_RUN", LL>(
+			this,
+			"BEFORE_RUN",
+			hookCtxFactory<LL>(currentCommand, executor, commandString) as never,
+			ctx,
+			permissions,
+		);
+		if (hookErr !== undefined) return hookErr;
+		hookErr = undefined;
+
 		const [done, result] = pcall(() => currentCommand.getImplementation()?.(ctx as never, ...argumentsToCommand));
+
+		hookErr = runHook<"AFTER_RUN", LL>(
+			this,
+			"AFTER_RUN",
+			hookCtxFactory<LL>(currentCommand, executor, commandString) as never,
+			ctx,
+			permissions,
+			done,
+			typeIs(result, "string") ? result : undefined,
+		);
+		if (hookErr !== undefined) error(hookErr, 0);
+		hookErr = undefined;
 
 		if (!done) error(ExecutionError.UNEXP.format(tostring(result)), 0);
 
