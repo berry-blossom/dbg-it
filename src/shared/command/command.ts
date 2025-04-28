@@ -62,10 +62,10 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 	public getSuggestions(input: ReadOnlyTokenStream): string[] {
 		// TODO reduce elements based on input string
 		let suggestions = [...this.argument.suggestions(ReadOnlyTokenStream.create(input._origin))];
-		// If a type does not have suggestions, assume it should not have any.
-		const isValid = suggestions.isEmpty();
-		// TODO determine validity by fuzzy find on input string and suggestions
-		if (isValid && suggestions.isEmpty()) suggestions = [input._origin];
+		if (suggestions.isEmpty()) suggestions = [];
+		else {
+			// TODO determine validity by fuzzy find on input string and suggestions
+		}
 		return suggestions;
 	}
 
@@ -113,6 +113,7 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 		return current;
 	}
 
+	// Returns the extra data appended to this command
 	public getExtraData(): ReadonlyArray<string> {
 		return this.extraData;
 	}
@@ -206,6 +207,21 @@ export class Command<
 		return this;
 	}
 
+	/**
+	 * Creates a command from serializable data
+	 * This does not create an implementation, you need to specify an implementation yourself.
+	 *
+	 * When the command is created, the hook "SERIALIZED_CMD" is run.
+	 * You may connect to this hook and implement the command that way if desired.
+	 *
+	 * This system is used for replication internally.
+	 *
+	 * A replicated command will include the following string in it's extra data:
+	 * `.DBS2C` (see {@link DBGIT_EXDATA_SYMBOL.REPLICATED_S2C|here})
+	 *
+	 * You can check for this string in the command's extra data
+	 * to filter out any serialized commands that are from the command replication system.
+	 */
 	public static fromSerializable<LL extends string[] = string[]>(
 		serialized: CommandSerializable,
 		registry: CommandRegistry,

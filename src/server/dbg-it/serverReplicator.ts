@@ -2,7 +2,7 @@ import { Players } from "@rbxts/services";
 import { DbgItConfig, Main } from "../../shared/dbg-it";
 import { CommandsSpecifier } from "../../shared/dbg-it/main";
 import { SharedReplicator, SharedReplicatorLogLevels } from "../../shared/repl/replicator";
-import { AnyCommand, serializeCommand } from "../../shared/command";
+import { AnyCommand, DBGIT_EXDATA_SYMBOL, serializeCommand } from "../../shared/command";
 
 // Commands to batch send to client
 const BATCH_SIZE = 3;
@@ -64,9 +64,15 @@ export class ServerReplicator<T extends Partial<DbgItConfig>> extends SharedRepl
 		this.specifiers.add(spec);
 	}
 
-	public sendCustomReplication(plr: Player | "all", cmd: string) {
+	/**
+	 * Send a custom replication event to player(s)
+	 * @param plr Players to send the command to. If "all" is specified, it will fire the command to all clients via .FireAllClients
+	 * @param cmd The replication event string to send. You can specify these events like you would normal commands on the client replicator.
+	 */
+	public sendCustomReplication(plr: Player | Player[] | "all", cmd: string) {
 		if (typeIs(plr, "Instance")) this.remotes.remotes().s2cSendReplCommand.instance!.FireClient(plr, cmd);
-		else this.remotes.remotes().s2cSendReplCommand.instance!.FireAllClients(cmd);
+		else if (plr === "all") this.remotes.remotes().s2cSendReplCommand.instance!.FireAllClients(cmd);
+		else plr.forEach((p) => this.remotes.remotes().s2cSendReplCommand.instance!.FireClient(p, cmd));
 	}
 
 	public init(): void {
@@ -90,18 +96,25 @@ export class ServerReplicator<T extends Partial<DbgItConfig>> extends SharedRepl
 					return;
 				}
 				current++;
-				return serializeCommand(nextCmd.asSerializable());
+				const serializable = nextCmd.asSerializable();
+				// Append replication extradata
+				serializable.extraData.push(DBGIT_EXDATA_SYMBOL.REPLICATED_S2C);
+				return serializeCommand(serializable);
 			};
+			// This should automatically break when the player leaves the game
 			while (this.sendCmds.has(plr)) {
 				if (current >= cmdsArr.size()) break;
 				const serCmds: buffer[] = [];
 				// Send batch a few server commands over
+				// TODO figure out a good batch size.
+				// Feel free to make a PR for this or if you have a better way of handling this, make a PR as well!
 				for (const _ of $range(1, BATCH_SIZE)) {
 					if (current >= cmdsArr.size()) break;
 					const serial = sendNextCommand();
 					if (serial !== undefined) serCmds.push(serial);
 				}
 				this.remotes.remotes().s2cSendSerCommand.instance!.FireClient(plr, ...serCmds);
+				// This is how long (i think) it takes for one remote event to be processed
 				task.wait(1 / 20);
 			}
 			cmdsArr.clear();

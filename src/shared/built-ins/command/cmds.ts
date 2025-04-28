@@ -49,12 +49,39 @@ export function defaultDetermineHelpString(
 	return helpString;
 }
 
+/**
+ * A simple command which returns a paginated list of commands that the current user may execute.
+ * You can specify a few options which include the following:
+ *
+ * * Commands per page
+ * * Command execution level names
+ * 	* If none are provided, it will display a number instead of a name
+ * * The function used to determine how each entry of the command list is generated
+ * 	* See the {@link defaultDetermineHelpString|default implementation} for an example
+ */
 export function cmdsCommand<LL extends string[] = string[]>(
 	options: Partial<CmdsCommandOptions> = {},
 ): (cmd: Command<"cmds", ["cmds"], LL>) => Command<"cmds", ["cmds"], LL> {
 	// Merge default and user options
 	const settings = { commandsPerPage: 10, determineHelpString: defaultDetermineHelpString, ...options };
-
+	// Turns the commands in a registry into a pretty printed list of commands
+	//
+	// Example:
+	//
+	// Registry
+	// 	-Command
+	//	-Command2
+	//		-SubCommand
+	//			-string...
+	//		-string...
+	//
+	// Turns into..
+	//
+	// Command (User)
+	// Command2 Subcommand [string] (User)
+	// Command2 [string] (User)
+	//
+	// This needs to return an array of strings so we can pass it into the paginate function in the command itself
 	function cmdsToHelpStrings(cmds: GetCommandsNode[], executor: CommandExecutor): string[] {
 		const helpStrings: string[] = [];
 		function searchCommandAndChildren(cmd: AnyCommand, key: string = cmd.name, level: string = ""): void {

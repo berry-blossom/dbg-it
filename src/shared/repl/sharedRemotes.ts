@@ -47,6 +47,9 @@ export class RemotesLoader<T extends DefRemotes> {
 	) {
 		this.loadedRemotes = this.reloadRemotesState();
 		// TODO There being no way to disconnect these is probably bad.
+		// For now I think it's okay, but in the future we may want to be able to have a cleanup state
+		// In case theres some kind of use-case for that.
+		// If you have a case to be made for this please make a PR :)
 		if (RunService.IsClient()) {
 			this.sharedReplFolder.DescendantAdded.Connect(() => (this.loadedRemotes = this.reloadRemotesState()));
 			this.sharedReplFolder.DescendantRemoving.Connect(() => (this.loadedRemotes = this.reloadRemotesState()));
@@ -54,7 +57,7 @@ export class RemotesLoader<T extends DefRemotes> {
 	}
 
 	protected reloadRemotesState(): LoadedRemotes<T> {
-		// This will recursively transform RemoteDefs into RemoteLoaded and DefRemotes into LoadedRemotes
+		// This function will recursively transform RemoteDefs into RemoteLoaded and DefRemotes into LoadedRemotes
 		function recursiveLoad(
 			v: RemoteDef<BOUNDARY> | DefRemotes,
 			k: string,
@@ -81,12 +84,17 @@ export class RemotesLoader<T extends DefRemotes> {
 					boundary: v.boundary,
 				} as RemoteLoaded<BOUNDARY>;
 			} else {
+				// This is a folder, recurse properly
 				let parentFolder = parent.FindFirstChild(k)! as Folder;
 				if (parentFolder === undefined) {
 					parentFolder = new Instance("Folder");
 					parentFolder.Name = k;
 					parentFolder.Parent = parent;
 				}
+				// Create remotes recursively for this folder
+				// I don't like how this is basically the same code as below
+				// Maybe we should put this into a function?
+				// For now, it's fine to inline.
 				const recursive = {} as Record<string, RemoteLoaded<BOUNDARY> | LoadedRemotes<DefRemotes>>;
 				for (const [kC, vC] of pairs(v as DefRemotes))
 					recursive[kC as string] = recursiveLoad(vC as defined, kC as string, parentFolder);

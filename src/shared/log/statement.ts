@@ -1,3 +1,4 @@
+//!native
 export interface LogStructure<T extends [...string[]]> {
 	level: T[number];
 	msg: string;

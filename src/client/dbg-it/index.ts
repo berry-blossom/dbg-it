@@ -15,6 +15,11 @@ export class DbgItClient<T extends Partial<DbgItConfig> = typeof DefaultMainConf
 		this.replicator = new ClientReplicator(this);
 	}
 
+	/**
+	 *
+	 * @param replicator If the replicator should start of not
+	 * @returns The DbgIt Client.
+	 */
 	public start(replicator: boolean = this.settings?.replicator ?? true) {
 		super.start();
 		if (replicator) {

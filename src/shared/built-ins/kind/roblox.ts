@@ -4,7 +4,14 @@ import { Players } from "@rbxts/services";
 import { ReadOnlyTokenStream } from "../../token";
 import { CSVKind } from "./data";
 
-// Kind which represents Players currently in the game. Example: roblox,@s,builderman "sepiaspinda @a"
+/**
+ * Kind which represents Players currently in the game. Example: roblox,@s,builderman "sepiaspinda \@a"
+ *
+ * This Kind has macros for selecting players, which are:
+ * * \@s - The player currently executing this command
+ * * \@a - All players currently in the game
+ * * \@o - All players currently in the game with the exception of the player executing this command.
+ */
 export class PlayersKind extends CSVKind<Player> {
 	constructor() {
 		super("[Players]", t.instanceIsA("Player"), {

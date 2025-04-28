@@ -1,3 +1,4 @@
+//!native
 import linked_list from "@rbxts/berry-linked-list";
 import { LogFactory, LogStructure, logStructureFactory } from "./statement";
 

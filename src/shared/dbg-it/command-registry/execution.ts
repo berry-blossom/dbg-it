@@ -61,7 +61,6 @@ export function parseCommandArguments<LL extends string[] = string[]>(
 			// This is simply the entire command string except what comes before the cursor.
 			tokenString = tokenized.getAfter();
 		}
-
 		// We have two seperate checks: one for turning the current token into the expected datatype,
 		// and one for typechecking the data returned from the previous check.
 		// The reason this is done is for a few reasons:

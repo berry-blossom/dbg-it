@@ -1,3 +1,4 @@
+//!native
 type TOKENIZE_STATE = "WRITE" | "IN_QUOTE" | "FLUSH";
 
 function isWhitespace(character: string) {

@@ -1,6 +1,10 @@
 import { BufferBuilder } from "@rbxts/berry-buffer";
 import { CommandSerializable } from "../data";
 
+// To add more serialized data, you must update the
+// commandSerDesSteps variable with the steps you added (dont forget the explicit type).
+// Please only add steps starting from the end of the array.
+
 export const commandSerDesSteps: ["string", "array", "array", "string", "boolean", "string"] = [
 	"string",
 	"array",

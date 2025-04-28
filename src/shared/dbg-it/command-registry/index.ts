@@ -101,7 +101,7 @@ export class CommandRegistry<RS = undefined, LL extends string[] = string[]> {
 	}
 
 	/**
-	 * Executes a command string. Important: this is syncronous! The current thread will halt until the command finishes executing.
+	 * Executes a command string. Important: this is synchronous! The current thread will halt until the command finishes executing.
 	 * @param commandString Command string to execute
 	 * @param executor The executor of the command. Passing undefined will run the command with the highest level permission.
 	 * @returns A string if one was returned from the command implementation.
