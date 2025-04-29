@@ -47,6 +47,7 @@ export class Permissions<LL extends string[] = string[]> {
 		return buf;
 	}
 	public static deseralize(ser: string) {
+		if (ser.size() === 0) return {};
 		const [lvl, msg] = BufferBuilder.steps(buffer.fromstring(ser), ["i8", "string"] as const);
 		return {
 			lvl: lvl,
