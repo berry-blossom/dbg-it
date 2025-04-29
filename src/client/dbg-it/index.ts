@@ -27,10 +27,9 @@ export class DbgItClient<T extends Partial<DbgItConfig> = typeof DefaultMainConf
 			this.replicator.init();
 		}
 		this._registry.addHook("SERIALIZED_CMD", (ctx) => {
-			return this.replicator
-				.executeServerCommand(ctx.commandString)
-				.catch((err) => error(tostring(err), 0))
-				.expect();
+			const [done, err] = this.replicator.executeServerCommand(ctx.commandString).await();
+			if (!done) error(err, 0);
+			return err;
 		});
 		return this;
 	}

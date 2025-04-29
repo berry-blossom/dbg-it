@@ -3,8 +3,6 @@ import { ExecutionError } from "../messages";
 import { AnyCommand } from "./command";
 import { CommandExecutor } from "./executor";
 
-const permissionSerializedSteps: BuilderDatatypes[] = [];
-
 export class Permissions<LL extends string[] = string[]> {
 	/** @hidden */ public _level: number = 0;
 	/** @hidden */ public _msg: string = ExecutionError.BADPERM;
@@ -44,11 +42,15 @@ export class Permissions<LL extends string[] = string[]> {
 		return this.executor.registry.topLevel >= this._level;
 	}
 
-	// TODO
 	public serialize(): buffer {
-		const [buf, _] = BufferBuilder.create().build();
+		const [buf, _] = BufferBuilder.create().i8(this._level).string(this._msg).build();
 		return buf;
 	}
-	// TODO
-	public static deseralize() {}
+	public static deseralize(ser: string) {
+		const [lvl, msg] = BufferBuilder.steps(buffer.fromstring(ser), ["i8", "string"] as const);
+		return {
+			lvl: lvl,
+			msg: msg,
+		};
+	}
 }

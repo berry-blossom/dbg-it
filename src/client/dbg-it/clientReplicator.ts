@@ -19,31 +19,41 @@ export class ClientReplicator<T extends Partial<DbgItConfig>> extends SharedRepl
 	 * This is automatically run whenever the client attempts to execute a server command
 	 * You shouldn't need to call this manually.
 	 */
-	public async executeServerCommand(commandString: string): Promise<string | void | undefined> {
-		if (this.recieveMutex) error("Already executing server command!", 0);
-		this.recieveMutex = true;
+	public executeServerCommand(commandString: string): Promise<string | void | undefined> {
+		return new Promise<string | void | undefined>((resolve, reject, onCancel) => {
+			if (this.recieveMutex) reject("Already executing server command!");
+			this.recieveMutex = true;
 
-		// TODO ugly, must be a better way for this
-		while (this.remotes.remotes().s2cSendCommandResult.instance === undefined) task.wait();
-		while (this.remotes.remotes().c2sExecuteCommand.instance === undefined) task.wait();
+			// TODO ugly, must be a better way for this
+			while (this.remotes.remotes().s2cSendCommandResult.instance === undefined) task.wait();
+			while (this.remotes.remotes().c2sExecuteCommand.instance === undefined) task.wait();
 
-		const running = coroutine.running();
-		let result: string | void | undefined = undefined;
+			const running = coroutine.running();
+			let result: string | void | undefined = undefined;
 
-		this.remotes.remotes().s2cSendCommandResult.instance!.OnClientEvent.Once((...args: unknown[]) => {
-			const [err, res] = args;
-			if (err === undefined) error("Command return unexpected result", 0);
-			if (err === true) error(res, 0);
-			result = res as never;
-			coroutine.resume(running);
+			const conn = this.remotes
+				.remotes()
+				.s2cSendCommandResult.instance!.OnClientEvent.Once((...args: unknown[]) => {
+					const [err, res] = args;
+					if (err === undefined) reject("Command return unexpected result");
+					if (err === true) reject(res);
+					result = res as never;
+					coroutine.resume(running);
+				});
+
+			onCancel(() => {
+				if (conn.Connected) conn.Disconnect();
+				if (running && coroutine.status(running) !== "dead") pcall(task.cancel, running);
+			});
+
+			this.remotes.remotes().c2sExecuteCommand.instance!.FireServer(commandString);
+
+			coroutine.yield(running);
+
+			resolve(result);
+		}).finally(() => {
+			this.recieveMutex = false;
 		});
-
-		this.remotes.remotes().c2sExecuteCommand.instance!.FireServer(commandString);
-
-		coroutine.yield(running);
-		this.recieveMutex = false;
-
-		return result;
 	}
 	/**
 	 * Sepcifies custom replication event(s).

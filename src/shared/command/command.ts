@@ -25,7 +25,7 @@ export interface CommandChildrenNode<LL extends string[] = string[]> {
 
 export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], LL extends string[] = string[]> {
 	protected _executor: CommandExecution<A, T, LL> | undefined;
-	/** @hidden */ public permissionBuilder: (p: Permissions<LL>) => Permissions<LL> = (p) => p;
+	/** @hidden */ public permissionBuilder: ((p: Permissions<LL>) => Permissions<LL>) | undefined = undefined;
 	/** @hidden */ public description: string | undefined;
 	/** @hidden */ public readonly parent: AnyCommand<LL> | undefined;
 	/** @hidden */ public readonly children: linked_list<CommandChildrenNode<LL>> = new linked_list();
@@ -98,12 +98,12 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 			// I architeched permissions to be created at execution time, because
 			// it is much easier to handle inheriting higher level permissions that way.
 			permissionSerialized: BufferBuilder.display(
-				(this.findTopLevelPermissionsBuilder() ?? ((p) => p))(
+				this.findTopLevelPermissionsBuilder()?.(
 					new Permissions<LL>(
 						this as AnyCommand<LL>,
 						new CommandExecutor<LL>(undefined, this as AnyCommand<LL>, this.registry),
 					),
-				).serialize(),
+				)?.serialize() ?? buffer.create(0),
 			),
 			impl: this.getImplementation() !== undefined,
 		};
@@ -144,7 +144,7 @@ export class Command<
 		kind: Kind<A2>,
 		builder: (cmd: Command<A2, [...T, A2], LL>) => ReadOnlyCommand<A2, [...T, A2], LL>,
 	): Command<A, T, LL> {
-		const subCommand = builder(new Command(this.registry, `${kind.label}`, kind));
+		const subCommand = builder(new Command(this.registry, `${kind.label}`, kind, this as AnyCommand<LL>));
 		this.children.add({
 			cmd: subCommand as never,
 			parent: this as never,
@@ -244,6 +244,14 @@ export class Command<
 					hookCtxFactory(ctx.command as never, ctx.executor as never, ctx.commandString),
 				);
 			});
+		if (serialized.permissionSerialized !== undefined && serialized.permissionSerialized.size() > 0) {
+			const deser = Permissions.deseralize(serialized.permissionSerialized);
+			root.permissions((p) => {
+				if (deser.lvl !== undefined) p = p.level(deser.lvl);
+				if (deser.msg !== undefined) p = p.msg(deser.msg);
+				return p;
+			});
+		}
 		return root as unknown as Command<string, string[], LL>;
 	}
 }
