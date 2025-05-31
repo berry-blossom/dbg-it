@@ -11,6 +11,7 @@ import { BufferBuilder } from "@rbxts/berry-buffer";
 import { CommandExecutor } from "./executor";
 import { ExecutionError } from "../messages";
 import { hookCtxFactory } from "../dbg-it/command-registry/hooks";
+import { SerializedArgLabelToKind } from "./serdes";
 
 export type CommandExecution<A extends defined, T extends [...defined[]] = [A], LL extends string[] = string[]> =
 	| ((ctx: CommandContext<A, T, LL>, ...args: T) => string | undefined | void)
@@ -227,7 +228,12 @@ export class Command<
 		registry: CommandRegistry,
 		parent?: AnyCommand<LL>,
 	) {
-		const root = new Command(registry, serialized.name, new StringKind(), parent as never);
+		const root = new Command(
+			registry,
+			serialized.name,
+			SerializedArgLabelToKind.get(serialized.kind) ?? new StringKind(),
+			parent as never,
+		);
 		(root.extraData as Array<string>).push(DBGIT_EXDATA_SYMBOL.DESERIALIZED);
 		serialized.children.forEach((child) => {
 			const childDeser = Command.fromSerializable(child, registry, root as AnyCommand);

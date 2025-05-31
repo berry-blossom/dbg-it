@@ -6,6 +6,7 @@ export type KindType<T extends Kind<defined> | undefined> = T extends Kind<infer
 export type Kindize<T extends defined[]> = { [K in keyof T]: Kind<T[K]> };
 
 export abstract class Kind<T extends defined> {
+	public readonly description?: string;
 	/**
 	 * Handles transforming user input into a type and type safety.
 	 * @param label Name of this Kind, to be displayed to a user. Usually just the name of the type you represent.

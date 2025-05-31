@@ -88,8 +88,8 @@ export class LiteralKind<T extends string> extends tKind<T> {
 // Kind with multiple possible literal string values. Example: True or False
 export class LiteralUnionKind<T extends string[]> extends Kind<T[number]> {
 	public readonly literal: T;
-	public constructor(...literal: T) {
-		super(`[${literal.join(" | ")}]`);
+	public constructor(label: string, ...literal: T) {
+		super(label);
 		this.literal = literal;
 	}
 	public transform(data: string): T[number] | undefined {
@@ -176,4 +176,116 @@ export abstract class CSVKind<T extends defined> extends tKind<T[]> {
 		values: ReadonlyArray<string>,
 		token: ReadOnlyTokenStream,
 	): { name: string; value: T }[];
+
+	public static suggestMacros<T extends defined>(kind: CSVKind<T>) {
+		const macroKeys: string[] = [];
+		for (const [k, _] of pairs(kind.macros)) macroKeys.push(k);
+		return macroKeys;
+	}
+}
+
+/**
+ * A CSVKind that is a list of literal strings.
+ */
+export class EnumsKind<T extends string[]> extends CSVKind<T[number]> {
+	public constructor(
+		label: string,
+		public keys: T,
+		macros?: Record<string, (ctx: KindCommandContext) => T[number][]>,
+	) {
+		super(label, t.union(...keys.map((v) => t.literal(v))), macros);
+	}
+	values<LL extends string[] = string[]>(
+		ctx: KindCommandContext<LL>,
+		values: ReadonlyArray<string>,
+		token: ReadOnlyTokenStream,
+	): { name: string; value: T[number] }[] {
+		return this.keys.map((v) => ({ name: v, value: v }));
+	}
+	suggestions(): string[] {
+		const macroKeys: string[] = [];
+		const enumKeys: string[] = [];
+		for (const [k, _] of pairs(this.macros)) macroKeys.push(k);
+		this.keys.forEach((p) => {
+			// See comment in transform method of CSVKind for why this is done
+			if (this.macros[p] !== undefined) {
+				enumKeys.push(`_${p}`);
+				return;
+			}
+			enumKeys.push(p);
+		});
+		return [...macroKeys, ...enumKeys];
+	}
+}
+
+export class FixedVectorKind<T extends defined> extends tKind<T[]> {
+	public macros: Record<string, (ctx: KindCommandContext) => T[]> = {};
+	public constructor(
+		label: string,
+		public readonly size: number,
+		public readonly mapper: (data: string) => T,
+		check: t.check<T>,
+	) {
+		super(label, t.array(check));
+	}
+	public transform<LL extends string[] = string[]>(data: string, ctx: KindCommandContext<LL>): T[] | undefined {
+		if (this.macros[data] !== undefined) {
+			return this.macros[data](ctx as never);
+		}
+		const tokens = TokenStream.create(data);
+		let csvValues: string[] = [];
+
+		for (const _ of $range(1, math.max(this.size, 1))) {
+			if (tokens.inRange() === false) break;
+			csvValues.push(tokens.get().lower());
+			tokens.next();
+		}
+
+		// Reduce down all comma seperated values and space seperated values
+		// Allows for behavior such as "1 2 3" and 1,2,3
+		csvValues = string.split(csvValues.join(","), ",");
+
+		return csvValues.mapFiltered((v) => this.mapper(v));
+	}
+	public suggestions(): string[] {
+		const macroLabels = identity<string[]>([]);
+		for (const [k, _] of pairs(this.macros)) macroLabels.push(k);
+		return macroLabels;
+	}
+}
+
+export class FixedVectorTransformKind<T extends defined> extends tKind<T> {
+	public macros: Record<string, (ctx: KindCommandContext) => T> = {};
+	public constructor(
+		label: string,
+		public readonly size: number,
+		public readonly mapper: (data: string[]) => T,
+		check: t.check<T>,
+	) {
+		super(label, check);
+	}
+	public transform<LL extends string[] = string[]>(data: string, ctx: KindCommandContext<LL>): T | undefined {
+		if (this.macros[data] !== undefined) {
+			return this.macros[data](ctx as never);
+		}
+		const tokens = TokenStream.create(data);
+		let csvValues: string[] = [];
+
+		for (const _ of $range(1, math.max(this.size, 1))) {
+			if (tokens.inRange() === false) break;
+			csvValues.push(tokens.get().lower());
+			tokens.next();
+		}
+
+		// Reduce down all comma seperated values and space seperated values
+		// Allows for behavior such as "1 2 3" and 1,2,3
+		csvValues = string.split(csvValues.join(","), ",");
+
+		return this.mapper(csvValues);
+	}
+	public suggestions(): string[] {
+		const macroLabels = identity<string[]>([]);
+		for (const [k, _] of pairs(this.macros)) macroLabels.push(k);
+		return macroLabels;
+	}
 }

@@ -1,3 +1,5 @@
+import { BrickColorKind, Color3Kind, Kind, PlayersKind, Vector2Kind, Vector3Kind } from "../../shared";
+import { SerializedArgLabelToKind } from "../../shared/command";
 import { Main } from "../../shared/dbg-it";
 import { DbgItConfig, DefaultMainConfig } from "../../shared/dbg-it/config";
 import { ClientReplicator } from "./clientReplicator";
@@ -12,6 +14,14 @@ export class DbgItClient<T extends Partial<DbgItConfig> = typeof DefaultMainConf
 	/** @hidden */ public readonly replicator: ClientReplicator<T>;
 	protected constructor(protected readonly settings?: T & Partial<ClientConfig>) {
 		super(settings);
+
+		// Add shared builtins kinds
+		this.addSharedKind(new PlayersKind())
+			.addSharedKind(new Vector2Kind())
+			.addSharedKind(new Vector3Kind())
+			.addSharedKind(new Color3Kind())
+			.addSharedKind(new BrickColorKind());
+
 		this.replicator = new ClientReplicator(this);
 	}
 
@@ -22,6 +32,7 @@ export class DbgItClient<T extends Partial<DbgItConfig> = typeof DefaultMainConf
 	 */
 	public start(replicator: boolean = this.settings?.replicator ?? true) {
 		super.start();
+
 		if (replicator) {
 			this.replicator.builtins();
 			this.replicator.init();
@@ -31,6 +42,11 @@ export class DbgItClient<T extends Partial<DbgItConfig> = typeof DefaultMainConf
 			if (!done) error(err, 0);
 			return err;
 		});
+		return this;
+	}
+
+	public addSharedKind<T extends defined>(kind: Kind<T>) {
+		SerializedArgLabelToKind.set(kind.label, kind);
 		return this;
 	}
 

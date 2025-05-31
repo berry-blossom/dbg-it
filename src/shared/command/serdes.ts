@@ -1,5 +1,6 @@
 import { BufferBuilder } from "@rbxts/berry-buffer";
 import { CommandSerializable } from "../data";
+import { Kind } from "../kind";
 
 // To add more serialized data, you must update the
 // commandSerDesSteps variable with the steps you added (dont forget the explicit type).
@@ -13,6 +14,8 @@ export const commandSerDesSteps: ["string", "array", "array", "string", "boolean
 	"boolean",
 	"string",
 ];
+
+export const SerializedArgLabelToKind = new Map<string, Kind<defined> | undefined>();
 
 export function serializeCommand(serializable: CommandSerializable): buffer {
 	const [buf, _steps]: [buffer, typeof commandSerDesSteps] = BufferBuilder.create()
