@@ -2,6 +2,7 @@ import { AnyCommand, Command } from "../../command/command";
 import { CommandContext } from "../../command/context";
 import { CommandExecutor } from "../../command/executor";
 import { Permissions } from "../../command/permissions";
+import { CmdsCommandDescriptions } from "../../messages";
 import { paginate } from "../../util/pages";
 import { IntegerKind } from "../kind";
 
@@ -99,14 +100,22 @@ export function cmdsCommand<LL extends string[] = string[]>(
 	return (cmd) =>
 		(options.configurator ?? ((cmd) => cmd))(
 			cmd
+				.setDescription(CmdsCommandDescriptions.CMDS_MAIN)
 				.implement((ctx) => {
 					const cmds = getCommands(ctx as never);
-					return paginate(cmdsToHelpStrings(cmds, ctx.executor as never), settings.commandsPerPage);
+					return paginate(
+						cmdsToHelpStrings(cmds, ctx.executor as never),
+						math.max(1, settings.commandsPerPage),
+					);
 				})
 				.appendArgument(new IntegerKind(), (cmd) =>
-					cmd.implement((ctx, _, page) => {
+					cmd.setDescription(CmdsCommandDescriptions.CMDS_PAGE).implement((ctx, _, page) => {
 						const cmds = getCommands(ctx as never);
-						return paginate(cmdsToHelpStrings(cmds, ctx.executor as never), settings.commandsPerPage, page);
+						return paginate(
+							cmdsToHelpStrings(cmds, ctx.executor as never),
+							math.max(settings.commandsPerPage),
+							page,
+						);
 					}),
 				),
 		);

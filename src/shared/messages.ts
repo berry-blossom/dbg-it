@@ -24,7 +24,7 @@ export enum KindErrors {
 	CSV_KIND_MACRO_COLLISION = "CSV Kind of %s has macro '%s' which collides with a value. To run command with that value, prefix it with an underscore: '_%s'.",
 }
 
-export enum CommandBarText {
-	NOINPUTHELPERTEXTLARGE = "Run command",
-	NOINPUTHELPERTEXT = 'Try running "cmds" to see a list of commands to run.',
+export enum CmdsCommandDescriptions {
+	CMDS_MAIN = "Lists all registered commands.\nThis includes commands which you do not have access to.\nCommands are seperated into pages, you may supply an integer as an argument to go to that page.",
+	CMDS_PAGE = "Optional page to jump to. Defaults to the first page.",
 }

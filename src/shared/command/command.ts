@@ -41,7 +41,7 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 		this.parent = parent;
 	}
 
-	/** @hidden */ public getImplementation() {
+	/** @hidden */ public getImplementation(): CommandExecution<A, T, LL> | undefined {
 		return this._executor;
 	}
 
@@ -81,12 +81,25 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 		return permB;
 	}
 
+	public findTopLevelDescription(): string | undefined {
+		let descr: string | undefined = this.description;
+		let topLevel: AnyCommand<LL> | undefined = this.parent;
+		while (topLevel) {
+			if (topLevel === undefined) break;
+			if (descr !== undefined) break;
+			if (topLevel?.description !== undefined) descr = topLevel?.description;
+			topLevel = topLevel?.parent;
+		}
+		return descr;
+	}
+
 	/**
 	 * Creates a CommandSerializable table which is used to easily serialize commands.
 	 * */
 	public asSerializable(): CommandSerializable {
 		const current: CommandSerializable = {
 			name: this.name,
+			description: this.description ?? "",
 			kind: this.argument.label,
 			extraData: this.extraData as Array<string>,
 			children: [],
@@ -136,7 +149,7 @@ export class Command<
 	 * @param builder The command implementation
 	 * @returns This command
 	 */
-	appendArgument<A2 extends defined>(
+	public appendArgument<A2 extends defined>(
 		kind: Kind<A2>,
 		builder: (cmd: Command<A2, [...T, A2], LL>) => ReadOnlyCommand<A2, [...T, A2], LL>,
 	): Command<A, T, LL> {
@@ -172,6 +185,14 @@ export class Command<
 	 */
 	public permissions(builder: (p: Permissions<LL>) => Permissions<LL>) {
 		this.permissionBuilder = builder;
+		return this;
+	}
+
+	/**
+	 * Sets the description at this command.
+	 */
+	public setDescription(description: string | undefined) {
+		this.description = description;
 		return this;
 	}
 
