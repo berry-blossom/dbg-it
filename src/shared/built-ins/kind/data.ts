@@ -49,22 +49,11 @@ export class BooleanKind extends tKind<boolean> {
 		super("[boolean]", t.boolean);
 	}
 	public transform(data: string) {
-		let retrn: boolean | undefined = undefined;
-		switch (data) {
-			case "1":
-			case "on":
-			case "true":
-				retrn = true;
-				break;
-			case "0":
-			case "off":
-			case "false":
-				retrn = false;
-				break;
-			default:
-				break;
-		}
-		return retrn;
+		return data === "1" || data === "on" || data === "true"
+			? true
+			: data === "0" || data === "off" || data === "false"
+				? false
+				: undefined;
 	}
 	public suggestions(): string[] {
 		return ["1", "on", "true", "0", "off", "false"];

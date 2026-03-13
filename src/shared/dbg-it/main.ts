@@ -2,35 +2,23 @@ import linked_list from "@rbxts/berry-linked-list";
 import { LogSink, LogSubscription, ReadonlyLogSink } from "../log";
 import { strictReverseKeys } from "../util/enum";
 import { CommandRegistry } from "./command-registry";
-import { DefaultMainConfig, DbgItConfig } from "./config";
+import { DefaultMainConfig, DbgItConfig, LogLevelsFromConfig, SafePickFromConfig } from "./config";
+import { CommandsSpecifier, SpecificatorUtil } from "./specification";
+import { DeepDefaults, EnsureRequired } from "../util/type";
 
-// Defaults T to K if T is undefined.
-type Defaults<T, K> = T extends defined ? T : K;
-// Defaults values of T to K if they are undefined, assuming they both extend P
-type DeepDefaults<P, T extends P, K extends P> = { [K2 in keyof P]: Defaults<T[K2], K[K2]> };
-// Same as Required<T>, but also ensures the values of T are defined.
-type EnsureRequired<T> = { [K in keyof T]-?: T[K] & defined };
-// Command registry type for only specifying commands.
-export type CommandRegistrySpecifier<LL extends string[] = string[]> = Pick<
-	CommandRegistry<CommandRegistrySpecifier, LL>,
-	"register"
->;
-export type CommandsSpecifier<LL extends string[] = string[]> = (
-	registry: CommandRegistrySpecifier<LL>,
-) => unknown | void;
-
-export class Main<T extends Partial<DbgItConfig> = typeof DefaultMainConfig> {
-	protected readonly _sink: LogSink<
-		Defaults<EnsureRequired<T>["logLevels"], (typeof DefaultMainConfig)["logLevels"]>
+export class Main<Config extends Partial<DbgItConfig> = typeof DefaultMainConfig> {
+	protected readonly _sink: LogSink<LogLevelsFromConfig<Config>>;
+	protected readonly _reverseExecutionPowerNames: Record<
+		SafePickFromConfig<"executionPowerNames", Config>[number],
+		number
 	>;
-	protected readonly _reverseExecutionPowerNames;
-	protected readonly _registry;
-	protected readonly _commandsSpecifiers: linked_list<
-		CommandsSpecifier<Defaults<EnsureRequired<T>["logLevels"], (typeof DefaultMainConfig)["logLevels"]>>
-	> = new linked_list();
-	protected readonly _settings: Readonly<DeepDefaults<DbgItConfig, EnsureRequired<T>, typeof DefaultMainConfig>>;
-	protected readonly _playerAdded: linked_list<(ctx: Main<T>, player: Player) => void> = new linked_list();
-	public constructor(settings?: T) {
+	protected readonly _registry: CommandRegistry<undefined, LogLevelsFromConfig<Config>>;
+	protected readonly _commandsSpecifiers: linked_list<CommandsSpecifier<LogLevelsFromConfig<Config>>> =
+		new linked_list();
+	protected readonly _settings: Readonly<DeepDefaults<DbgItConfig, EnsureRequired<Config>, typeof DefaultMainConfig>>;
+	protected readonly _playerAdded: linked_list<(ctx: Main<Config>, player: Player) => void> = new linked_list();
+
+	public constructor(settings?: Config) {
 		this._settings = { ...DefaultMainConfig, ...settings } as never;
 		this._sink = new LogSink(...(this._settings.logLevels as never)) as never;
 		this._reverseExecutionPowerNames = strictReverseKeys(...this._settings.executionPowerNames);
@@ -39,15 +27,15 @@ export class Main<T extends Partial<DbgItConfig> = typeof DefaultMainConfig> {
 			this._sink,
 			this._settings.warnLevel,
 		);
+
+		if (this._settings.logPrefix !== undefined) this._sink.setPrefix(this._settings.logPrefix);
 	}
 
-	/** @hidden */ public getSink(): ReadonlyLogSink<
-		Defaults<EnsureRequired<T>["logLevels"], (typeof DefaultMainConfig)["logLevels"]>
-	> {
+	public getSink(): ReadonlyLogSink<LogLevelsFromConfig<Config>> {
 		return this._sink;
 	}
 
-	/** @hidden */ public getRegistry() {
+	public getRegistry() {
 		return this._registry;
 	}
 
@@ -60,18 +48,11 @@ export class Main<T extends Partial<DbgItConfig> = typeof DefaultMainConfig> {
 		return this;
 	}
 
-	public subscribeLogs(
-		subscription: LogSubscription<
-			Defaults<EnsureRequired<T>["logLevels"], (typeof DefaultMainConfig)["logLevels"]>
-		>,
-	) {
+	public subscribeLogs(subscription: LogSubscription<LogLevelsFromConfig<Config>>) {
 		return this._sink.subscribe(subscription);
 	}
 
-	public log<LL extends Defaults<EnsureRequired<T>["logLevels"], (typeof DefaultMainConfig)["logLevels"]>>(
-		level: LL[number],
-		msg: string,
-	) {
+	public log<LL extends LogLevelsFromConfig<Config>>(level: LL[number], msg: string) {
 		this._sink.append(level, msg);
 		return this;
 	}
@@ -80,10 +61,15 @@ export class Main<T extends Partial<DbgItConfig> = typeof DefaultMainConfig> {
 		return this._sink.flush();
 	}
 
-	public specify(
-		spec: CommandsSpecifier<Defaults<EnsureRequired<T>["logLevels"], (typeof DefaultMainConfig)["logLevels"]>>,
-	) {
-		this._commandsSpecifiers.add(spec);
+	/**
+	 * Specify commands to be registered when this instance is started.
+	 * Specificators are a function which consumes a registry, in a context where registering commands is safe.
+	 * ```ts
+	 * DbgIt.specify((registry) => registry.register("hello-world", (cmd) => cmd.implement((ctx) => "Hello world!")));
+	 * ```
+	 */
+	public specify(...specificators: CommandsSpecifier<LogLevelsFromConfig<Config>>[]) {
+		for (const specifier of specificators) this._commandsSpecifiers.add(specifier);
 		return this;
 	}
 
@@ -93,7 +79,7 @@ export class Main<T extends Partial<DbgItConfig> = typeof DefaultMainConfig> {
 
 	/** @hidden */ public start() {
 		this._commandsSpecifiers.forEach((spec) => {
-			spec(this._registry);
+			spec(this._registry, SpecificatorUtil);
 		});
 	}
 }

@@ -17,8 +17,14 @@ export enum CommandSyntaxError {
 export enum RegistryWarnings {
 	OVERWRITTEN = 'Command "%s" was registered more than once and will be overwritten!',
 	ARGPRIORITY = 'Command "%s" @ token "%s" had conflicting valid arguments! Consider using literal subcommands to elimate conflicts.',
+	CMDSCMDSERVERSIDE = "SpecificatorUtil.registerCmdsCommand should only be called on the client.",
 }
 
 export enum KindErrors {
 	CSV_KIND_MACRO_COLLISION = "CSV Kind of %s has macro '%s' which collides with a value. To run command with that value, prefix it with an underscore: '_%s'.",
+}
+
+export enum CommandBarText {
+	NOINPUTHELPERTEXTLARGE = "Run command",
+	NOINPUTHELPERTEXT = 'Try running "cmds" to see a list of commands to run.',
 }

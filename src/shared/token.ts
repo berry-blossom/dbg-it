@@ -22,7 +22,7 @@ function isQuoteCharacter(character: string) {
 /**
  * @returns An array of strings which represent each token of the input string
  */
-export function tokenize(str: string): string[] {
+export function tokenizeString(str: string): string[] {
 	// This approach I'm taking here completely different than the usual way you'd do things and I'd like to give my reasoning as to why.
 	//
 	// In Lua (and Luau), pattern matching strings has often felt incredibly esoteric.
@@ -149,6 +149,14 @@ export class ReadOnlyTokenStream {
 		return this.cursor <= this.size() - 1 && this.cursor >= 0;
 	}
 
+	public match(pattern: string) {
+		return this.get().match(pattern);
+	}
+
+	public hasWhitespace() {
+		return this.match("%s");
+	}
+
 	public getAfter() {
 		if (!this.inRange()) return "";
 		const currentCursor = this.cursor;
@@ -178,7 +186,7 @@ export class ReadOnlyTokenStream {
 	}
 
 	public static create(str: string) {
-		return new ReadOnlyTokenStream(tokenize(str), str);
+		return new ReadOnlyTokenStream(tokenizeString(str), str);
 	}
 }
 
@@ -198,6 +206,6 @@ export class TokenStream extends ReadOnlyTokenStream {
 	}
 
 	public static create(str: string) {
-		return new TokenStream(tokenize(str), str);
+		return new TokenStream(tokenizeString(str), str);
 	}
 }

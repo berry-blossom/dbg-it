@@ -57,16 +57,11 @@ export class ReadOnlyCommand<A extends defined, T extends [...defined[]] = [A], 
 
 	/**
 	 * @returns An array of suggestions to satisfy the argument of this command.
-	 * If the argument's suggestion array is empty, it is assumed that there are no suggestions for the command and the input is returned instead.
-	 * Assume an array where the size is 1 and the first member is the input string means a valid suggestion is completed.
 	 */
 	public getSuggestions(input: ReadOnlyTokenStream): string[] {
 		// TODO reduce elements based on input string
 		let suggestions = [...this.argument.suggestions(ReadOnlyTokenStream.create(input._origin))];
 		if (suggestions.isEmpty()) suggestions = [];
-		else {
-			// TODO determine validity by fuzzy find on input string and suggestions
-		}
 		return suggestions;
 	}
 

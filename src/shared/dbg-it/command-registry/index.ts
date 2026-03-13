@@ -9,16 +9,18 @@ import { TokenStream } from "../../token";
 import { LogSink } from "../../log";
 import { deserializeCommand } from "../../command";
 import { CommandSerializable } from "../../data";
-import { parseCommandArguments } from "./execution";
-import { ExecutionHooks, HookArgs, HookCtx, hookCtxFactory, runHook } from "./hooks";
+import { ParseCommandArguments } from "./execution";
+import { ExecutionHooks, HookArgs, hookCtxFactory, runHook } from "./hooks";
 import { getEnumKeys, Reduceable } from "../../util";
+
+export { ParseCommandArguments, ParseCommandArgumentsReturn } from "./execution";
 
 function empty() {}
 
 // The generic for this class represents the return type of `register`
 // This is to allow sandboxed types such as command specifiers which will attempt to hide the execution function during registration contexts.
 
-export class CommandRegistry<RS = undefined, LL extends string[] = string[]> {
+export class CommandRegistry<Context = undefined, LL extends string[] = string[]> {
 	/** @hidden */ public readonly commands: Map<string, AnyCommand<LL>> = new Map();
 	/** @hidden */ public readonly level: Map<number, number> = new Map();
 	/** @hidden */ public readonly hooks: Map<
@@ -70,12 +72,12 @@ export class CommandRegistry<RS = undefined, LL extends string[] = string[]> {
 	public register<N extends string, C extends Command<N, [N], LL> = Command<N, [N], LL>>(
 		name: N,
 		builder: (cmd: C) => C,
-	): RS extends defined ? RS : CommandRegistry<undefined, LL> {
+	): Context extends defined ? Context : CommandRegistry<undefined, LL> {
 		if (this.commands.has(name)) this.logs.append(this.warnL, RegistryWarnings.OVERWRITTEN.format(name));
 		this.commands.set(
 			name,
 			builder(
-				new Command<N, [N], LL>(this as CommandRegistry<RS, LL>, name, new LiteralKind(name)) as C,
+				new Command<N, [N], LL>(this as CommandRegistry<Context, LL>, name, new LiteralKind(name)) as C,
 			) as AnyCommand<LL>,
 		);
 		return this as never;
@@ -84,7 +86,7 @@ export class CommandRegistry<RS = undefined, LL extends string[] = string[]> {
 	public registerSerialized(
 		buf: buffer,
 		callback: (deser: CommandSerializable) => void,
-	): RS extends defined ? RS : CommandRegistry<undefined, LL> {
+	): Context extends defined ? Context : CommandRegistry<undefined, LL> {
 		const deserialized = deserializeCommand(buf);
 		// TODO implement abstract parenting
 		const cmd = Command.fromSerializable<LL>(deserialized, this as never, undefined);
@@ -134,7 +136,7 @@ export class CommandRegistry<RS = undefined, LL extends string[] = string[]> {
 				err,
 				args,
 				command: foundCommand,
-			} = parseCommandArguments(this, executor, currentCommand, tokenized, commandString);
+			} = ParseCommandArguments(this, executor, currentCommand, tokenized, commandString);
 			argumentsToCommand = [...argumentsToCommand, ...args];
 			currentCommand = foundCommand;
 			if (err === undefined) continue;

@@ -2,22 +2,22 @@ import { CommandRegistry } from ".";
 import { KindCommandContext } from "../../built-ins/kind/context";
 import { AnyCommand } from "../../command";
 import { CommandSyntaxError, RegistryWarnings } from "../../messages";
-import { ReadOnlyTokenStream, TokenStream } from "../../token";
+import { ReadOnlyTokenStream } from "../../token";
 
-export interface parseCommandArgumentsReturn<LL extends string[] = string[]> {
+export interface ParseCommandArgumentsReturn<LL extends string[] = string[]> {
 	err: string | undefined;
 	args: defined[];
 	command: AnyCommand<LL>;
 }
 
-export function parseCommandArguments<LL extends string[] = string[]>(
+export function ParseCommandArguments<LL extends string[] = string[]>(
 	registry: CommandRegistry<unknown, LL>,
 	executor: Player | undefined,
 	currentCommand: AnyCommand<LL>,
 	tokenized: ReadOnlyTokenStream,
 	commandString: string,
-): parseCommandArgumentsReturn<LL> {
-	const returnA: parseCommandArgumentsReturn<LL> = {
+): ParseCommandArgumentsReturn<LL> {
+	const returnA: ParseCommandArgumentsReturn<LL> = {
 		err: undefined,
 		args: [],
 		command: currentCommand,

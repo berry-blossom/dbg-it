@@ -1,5 +1,5 @@
 import { DbgItConfig, Main } from "../../shared/dbg-it";
-import { CommandsSpecifier } from "../../shared/dbg-it/main";
+import { CommandsSpecifier } from "../../shared/dbg-it/specification";
 import { SharedReplicator, SharedReplicatorLogLevels } from "../../shared/repl/replicator";
 
 export class ClientReplicator<T extends Partial<DbgItConfig>> extends SharedReplicator {
@@ -9,10 +9,10 @@ export class ClientReplicator<T extends Partial<DbgItConfig>> extends SharedRepl
 	}
 	/**
 	 * Loads the built in custom replication events.
-	 * As of now, there are none...
+	 * As of now, there are none.
 	 */
 	public builtins() {
-		this.specify((reg) => {});
+		// empty
 	}
 	/**
 	 * Executes a command on the server.

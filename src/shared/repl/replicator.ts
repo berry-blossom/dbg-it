@@ -1,9 +1,9 @@
 import linked_list from "@rbxts/berry-linked-list";
 import { CommandRegistry } from "../dbg-it";
 import { DefaultMainConfig } from "../dbg-it/config";
-import { CommandsSpecifier } from "../dbg-it/main";
 import { LogSink } from "../log";
 import { BOUNDARY, DefRemotes, remote, RemotesLoader } from "./sharedRemotes";
+import { CommandsSpecifier, SpecificatorUtil } from "../dbg-it/specification";
 
 export type SharedReplicatorLogLevels = (typeof DefaultMainConfig)["logLevels"];
 
@@ -35,7 +35,7 @@ export abstract class SharedReplicator {
 	}
 	public init() {
 		this.specifiers.forEach((spec) => {
-			spec(this.registry);
+			spec(this.registry, SpecificatorUtil);
 		});
 	}
 }

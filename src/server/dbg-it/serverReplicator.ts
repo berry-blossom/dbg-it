@@ -1,8 +1,8 @@
 import { Players } from "@rbxts/services";
 import { DbgItConfig, Main } from "../../shared/dbg-it";
-import { CommandsSpecifier } from "../../shared/dbg-it/main";
 import { SharedReplicator, SharedReplicatorLogLevels } from "../../shared/repl/replicator";
 import { AnyCommand, DBGIT_EXDATA_SYMBOL, serializeCommand } from "../../shared/command";
+import { CommandsSpecifier } from "../../shared/dbg-it/specification";
 
 // Commands to batch send to client
 const BATCH_SIZE = 3;

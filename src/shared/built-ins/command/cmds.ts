@@ -5,15 +5,16 @@ import { Permissions } from "../../command/permissions";
 import { paginate } from "../../util/pages";
 import { IntegerKind } from "../kind";
 
-export interface CmdsCommandOptions {
+export interface CmdsCommandOptions<LL extends string[] = string[]> {
 	commandsPerPage: number;
 	determineHelpString: (
 		cmd: AnyCommand,
 		key: string,
 		executor: CommandExecutor,
-		permissionNames?: string[] | undefined,
+		permissionNames?: readonly string[] | undefined,
 	) => string;
-	permissionNames: string[] | undefined;
+	permissionNames: readonly string[] | undefined;
+	configurator: (cmd: Command<"cmds", ["cmds"], LL>) => Command<"cmds", ["cmds"], LL>;
 }
 
 interface GetCommandsNode {
@@ -31,7 +32,7 @@ export function defaultDetermineHelpString(
 	cmd: AnyCommand,
 	key: string,
 	executor: CommandExecutor,
-	permissionNames: string[] | undefined = undefined,
+	permissionNames: readonly string[] | undefined = undefined,
 ): string {
 	const permissionsBuilder = cmd.findTopLevelPermissionsBuilder();
 	const permissions = permissionsBuilder?.(new Permissions(cmd, executor));
@@ -60,7 +61,7 @@ export function defaultDetermineHelpString(
  * 	* See the {@link defaultDetermineHelpString|default implementation} for an example
  */
 export function cmdsCommand<LL extends string[] = string[]>(
-	options: Partial<CmdsCommandOptions> = {},
+	options: Partial<CmdsCommandOptions<LL>> = {},
 ): (cmd: Command<"cmds", ["cmds"], LL>) => Command<"cmds", ["cmds"], LL> {
 	// Merge default and user options
 	const settings = { commandsPerPage: 10, determineHelpString: defaultDetermineHelpString, ...options };
@@ -96,15 +97,17 @@ export function cmdsCommand<LL extends string[] = string[]>(
 	}
 
 	return (cmd) =>
-		cmd
-			.implement((ctx) => {
-				const cmds = getCommands(ctx as never);
-				return paginate(cmdsToHelpStrings(cmds, ctx.executor as never), settings.commandsPerPage);
-			})
-			.appendArgument(new IntegerKind(), (cmd) =>
-				cmd.implement((ctx, _, page) => {
+		(options.configurator ?? ((cmd) => cmd))(
+			cmd
+				.implement((ctx) => {
 					const cmds = getCommands(ctx as never);
-					return paginate(cmdsToHelpStrings(cmds, ctx.executor as never), settings.commandsPerPage, page);
-				}),
-			);
+					return paginate(cmdsToHelpStrings(cmds, ctx.executor as never), settings.commandsPerPage);
+				})
+				.appendArgument(new IntegerKind(), (cmd) =>
+					cmd.implement((ctx, _, page) => {
+						const cmds = getCommands(ctx as never);
+						return paginate(cmdsToHelpStrings(cmds, ctx.executor as never), settings.commandsPerPage, page);
+					}),
+				),
+		);
 }
