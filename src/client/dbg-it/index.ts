@@ -2,6 +2,7 @@ import { BrickColorKind, Color3Kind, Kind, PlayersKind, Vector2Kind, Vector3Kind
 import { SerializedArgLabelToKind } from "../../shared/command";
 import { Main } from "../../shared/dbg-it";
 import { DbgItConfig, DefaultMainConfig } from "../../shared/dbg-it/config";
+import { DeepDefaults, EnsureRequired } from "../../shared/util/type";
 import { ClientReplicator } from "./clientReplicator";
 
 export interface ClientConfig {
@@ -12,7 +13,11 @@ let singleton: DbgItClient;
 
 export class DbgItClient<T extends Partial<DbgItConfig> = typeof DefaultMainConfig> extends Main<T> {
 	/** @hidden */ public readonly replicator: ClientReplicator<T>;
-	protected constructor(protected readonly settings?: T & Partial<ClientConfig>) {
+	/** @hidden */ protected declare readonly _settings: Readonly<
+		DeepDefaults<DbgItConfig, EnsureRequired<T>, typeof DefaultMainConfig>
+	> &
+		Partial<ClientConfig>;
+	protected constructor(settings?: T & Partial<ClientConfig>) {
 		super(settings);
 
 		// Add shared builtins kinds
@@ -30,7 +35,7 @@ export class DbgItClient<T extends Partial<DbgItConfig> = typeof DefaultMainConf
 	 * @param replicator If the replicator should start of not
 	 * @returns The DbgIt Client.
 	 */
-	public start(replicator: boolean = this.settings?.replicator ?? true) {
+	public start(replicator: boolean = this._settings?.replicator ?? true) {
 		super.start();
 
 		if (replicator) {
