@@ -3,3 +3,4 @@
 /include
 *.tsbuildinfo
 rbxts-dbg-it*.tgz
+/src-old

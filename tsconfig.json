@@ -15,16 +15,15 @@
 		"moduleDetection": "force",
 		"strict": true,
 		"target": "ESNext",
-		"typeRoots": ["node_modules/@rbxts"],
-
+		"typeRoots": [
+			"node_modules/@rbxts"
+		],
 		// configurable
 		"rootDir": "src",
 		"outDir": "out",
 		"incremental": true,
 		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo",
 		"declaration": true,
-		"plugins": [
-			{"transform": "rbxts-transformer-t-new"}
-		]
+		"plugins": []
 	}
 }

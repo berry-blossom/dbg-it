@@ -1,0 +1,6 @@
+{
+    "name": "dbg-it",
+    "tree": {
+        "$path": "out/"
+    }
+}
